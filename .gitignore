@@ -1,0 +1,17 @@
+# Lean build output and downloaded dependencies
+.lake/
+
+# LaTeX build output
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+
+# Local files
+__pycache__/
+.DS_Store

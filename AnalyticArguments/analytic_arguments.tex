@@ -1,0 +1,663 @@
+\documentclass[reqno,a4paper,11pt]{amsart}
+
+\addtolength{\hoffset}{-0.6cm}
+\addtolength{\textwidth}{1.2cm}
+
+\numberwithin{equation}{section}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amsthm, amssymb}
+\usepackage{mathtools}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xurl}
+\usepackage{booktabs}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+
+\emergencystretch=2em
+
+\def\R{{\mathbb R}}
+\def\C{{\mathbb C}}
+\def\Z{{\mathbb Z}}
+\def\N{{\mathbb N}}
+\newcommand{\Sph}{\mathbb{S}}
+\newcommand{\lean}[1]{\texttt{#1}}
+\newcommand{\file}[1]{\nolinkurl{#1}}
+
+\begin{document}
+
+\title[The harmonic energy of nine points on the three-sphere]{The minimal harmonic energy of nine points\\ on the three-sphere: the arguments of the proof}
+
+\date{November 2026}
+
+\begin{abstract}
+This note accompanies the Lean verification of the minimal harmonic energy of nine points on the sphere $\Sph^3$. It states the theorem, the statements that the proof takes from its certificates, and the analytic arguments that lead from these statements to the theorem. All of it is verified in Lean; the note names the theorems of Lean that correspond to its statements.
+\end{abstract}
+
+\maketitle
+
+\section{The theorem}\label{sec:theorem}
+
+A \emph{configuration} is a family $x = (x_1, \dots, x_9)$ of nine points of $\R^4$. If its points are distinct, then
+$$
+E(x) = \sum_{i<j} \frac{1}{|x_i - x_j|^2}
+$$
+is its \emph{harmonic energy}. Up to a constant factor, the function $x \mapsto |x|^{-2}$ is the fundamental solution of the Laplace equation on $\R^4$. Hence $E(x)$ is the electrostatic energy of nine unit charges at the points of $x$. We ask for the configurations of distinct points of the unit sphere $\Sph^3 \subseteq \R^4$ with the least harmonic energy. Throughout, the \emph{energy} of a configuration is its harmonic energy. Let $C^* = (c_1, \dots, c_9)$ be the configuration that consists of the five points
+$$
+\Big( \cos \frac{2 \pi k}{5}, \ \sin \frac{2 \pi k}{5}, \ 0, \ 0 \Big), \qquad k = 0, \dots, 4,
+$$
+and of the four points $(0, 0, \pm 1, 0)$ and $(0, 0, 0, \pm 1)$: a regular pentagon on a great circle, and a square on the great circle of the orthogonal plane.
+
+\begin{theorem}[The minimal harmonic energy of $9$ points on $\Sph^3$]\label{thm:harmonic9}
+The points of $C^*$ are nine distinct points of the unit sphere of $\R^4$, and $E(C^*) = \tfrac{35}{2}$. Let $x_1, \dots, x_9$ be distinct points of the unit sphere of $\R^4$. Then
+$$
+E(x) \geq \frac{35}{2} ,
+$$
+and equality holds if and only if there are an orthogonal matrix $U$ and a permutation $\sigma$ of $\{1, \dots, 9\}$ such that $x_i = U c_{\sigma(i)}$ for all $i$.
+\end{theorem}
+
+So the least harmonic energy of nine points on the three-sphere is $\tfrac{35}{2}$, and the minimizer is unique up to orthogonal maps and relabelling.
+
+{\sloppy In Lean the theorem is \lean{Harmonic9S3.harmonic\_energy\_9\_points\_S3}. The file \file{Showcase.lean} states it with Mathlib alone: the Euclidean space $\R^4$ with its norm, finite sums, the cosine and the sine, linear isometries and permutations. The file \file{Showcase_WithProofs.lean} contains the same statement with its proof. The library states the theorem with coordinates, as the proposition \lean{S3N9.Harmonic9} of the file \file{LeanCode/S3N9/Statement.lean}. The theorem \lean{T8A.harmonic9} is a proof of this proposition, and \file{Showcase_WithProofs.lean} passes from it to the form of \file{Showcase.lean}. These theorems depend on the three standard axioms \lean{propext}, \lean{Classical.choice} and \lean{Quot.sound} only.\par}
+
+\emph{The structure of the proof.} Let $f(t) = 1/(2-2t)$. For a configuration $x$ of distinct points of $\Sph^3$ we write $t_{ij} = \langle x_i, x_j \rangle$, so that $|x_i - x_j|^2 = 2 - 2 t_{ij}$ and $E(x) = \sum_{i<j} f(t_{ij})$. Let
+$$
+T = \tfrac{1089}{2000} .
+$$
+The proof is a proof by exclusion. A linear programming bound shows that $E(x) \leq \tfrac{35}{2}$ implies $t_{ij} < T$ for all $i \neq j$. The configurations with this property are divided into $55$ cells by their most negative inner products. For $54$ cells, certificates of three-point bounds show $E > \tfrac{35}{2}$. The last cell contains the minimizer. It is divided further, and its parts are treated by three-point bounds, by certificates of a second kind, whose kernels are rooted at a plane, and by one sharp certificate of this kind, whose bound is $\tfrac{35}{2}$. The sharp certificate also determines the inner products of a configuration with the energy $\tfrac{35}{2}$.
+
+The proof has a computational part and an analytic part. The computational part consists of eight statements, (C1) to (C8), each of which is established by certificates: finite data, on which the kernel of Lean evaluates a checker whose soundness is a theorem of Lean, or which enter a proof in Lean directly. Section \ref{sec:computational} contains these statements. Section \ref{sec:analytic} contains the analytic arguments, the statements (A1) to (A11), which lead from them to Theorem \ref{thm:harmonic9}. Section \ref{sec:lean} lists the parts of the proof in Lean.
+
+\section{The computational statements}\label{sec:computational}
+
+Table \ref{tab:s3n9} lists the computational statements in the order of the proof, with their theorems in Lean. The statements (C2) to (C4) concern certificates of the typed three-point bound, the statements (C6) to (C8) concern certificates of the virtual-root bound. We state the two bounds as theorems about points of $\Sph^3$ (Theorems \ref{thm:typed} and \ref{thm:vr}), and we describe the data of a certificate and what the kernel checks.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{@{}lp{0.50\textwidth}p{0.36\textwidth}@{}}
+\toprule
+ & computational statement & Lean \\
+\midrule
+(C1) & separation: $E(x) \leq \tfrac{35}{2}$ implies $t_{ij} < T$ & \lean{S3N9.separation} \\
+(C2) & each of the $110$ typed three-point certificates bounds the energy by $\tfrac{35}{2}$ on the domain that it declares & \lean{T8N.W<i>.energy} \\
+(C3) & the declared domains contain the $119$ claims of the cells & \lean{T8N.W<i>.energy\_claim<k>} \\
+(C4) & the certificate of the first cell, with one class of nine points & \lean{T8N.WL0.energy\_claim0} \\
+(C5) & the constants of the Gram--Schmidt cells satisfy their conditions & \lean{S3N9.cell10\_valid}, \newline \lean{S3N9.cell30\_valid}, \lean{S3N9.lstar\_le} \\
+(C6) & each of the $11$ virtual-root certificates with margin bounds the energy by $\tfrac{35}{2}$ on its piece & \lean{T8V.<leaf>.energy} \\
+(C7) & the sharp virtual-root certificate: $E \geq \tfrac{35}{2}$ on its piece & \lean{T8X.I3.energy} \\
+(C8) & the contacts: a configuration of this piece with $E \leq \tfrac{35}{2}$ has the inner products of the minimizer & \lean{T8X.I3.contacts} \\
+\bottomrule
+\end{tabular}
+\medskip
+\caption{The computational statements of the proof of Theorem \ref{thm:harmonic9}. The certificates of (C1) and (C5) are parts of the files \file{LeanCode/S3N9/Separation.lean} and \file{LeanCode/S3N9/GramSchmidtCells.lean}; those of the other statements are the modules of the folder \file{Certificates/}.}\label{tab:s3n9}
+\end{table}
+
+\subsection{Separation}\label{sec:s3n9sep}
+
+The statement (C1) is a linear programming bound in the sense of Delsarte and Yudin. Let $U_0 = 1$, $U_1(t) = 2t$, $U_2(t) = 4t^2 - 1$ and $U_3(t) = 8t^3 - 4t$ be the Chebyshev polynomials of the second kind up to the degree $3$. Up to positive factors they are the Gegenbauer polynomials of the sphere $\Sph^3$.
+
+\begin{theorem}[Linear programming bound with a marked pair]\label{thm:lpmarked}
+Let $g = g_0 U_0 + g_1 U_1 + g_2 U_2 + g_3 U_3$ with real numbers $g_0$ and $g_1, g_2, g_3 \geq 0$, and let $\chi, T \in \R$. Suppose that $(2-2t) \, g(t) \leq 1$ for all $t \in [-1,1]$ and that $(2-2t) \, (g(t) + \chi) \leq 1$ for all $t \in [T,1]$. Let $x_1, \dots, x_n \in \Sph^3$ be distinct points such that $\langle x_i, x_j \rangle \geq T$ for some $i \neq j$. Then
+$$
+\sum_{i<j} \frac{1}{|x_i - x_j|^2} \;\geq\; \frac{n^2 g_0 - n \, g(1)}{2} + \chi .
+$$
+\end{theorem}
+
+This is the theorem \lean{CAP.LP.lp\_marked} (\file{LeanCode/CAP/Schema/LP/Sphere3.lean}). The proof uses that the kernels $U_k$ are positive definite on $\Sph^3$: $\sum_{i,j} U_k(\langle x_i, x_j \rangle) \geq 0$ for $k = 1, 2, 3$. We prove this by sums of squares. For vectors $a, b \in \R^4$ let $A = \langle a, b \rangle$ and $W = |a|^2 |b|^2$. The forms $2A$, $4A^2 - W$ and $8A^3 - 4AW$ agree with $U_1$, $U_2$, $U_3$ at unit vectors, and each of them is a sum $\sum_m c_m \, h_m(a) \, h_m(b)$ with numbers $c_m > 0$ and polynomials $h_m$ in four variables. For $k = 2$ the polynomials are the products $a_p a_q$ and the differences $a_p^2 - a_q^2$ with $p < q$. For $k = 3$ they are the components of the trace-free part of $a \otimes a \otimes a$, which are $2a_p^3 - |a|^2 a_p$, $6 a_p^2 a_q - |a|^2 a_q$ and $a_p a_q a_r$. The polynomials need not be orthogonal, since only the signs of the $c_m$ are used. In Lean each of the three identities is proved by the tactic \texttt{ring} (\file{LeanCode/CAP/Schema/LP/Gegenbauer4.lean}). With the sum of the kernels the proof is the usual one: the sum of $g$ over all pairs of indices is at least $n^2 g_0$, its diagonal is $n \, g(1)$, every pair of distinct points satisfies $g \leq f$, and the marked pair satisfies $g + \chi \leq f$.
+
+\emph{The certificate.} The certificate consists of the numbers
+\begin{gather*}
+g_0 = \tfrac{6019524913}{10^{10}}, \qquad g_1 = \tfrac{1458827969}{5 \cdot 10^9}, \qquad g_2 = \tfrac{1020929887}{10^{10}}, \qquad g_3 = \tfrac{94829631}{5 \cdot 10^9}, \\
+\chi = \tfrac{439603221}{25 \cdot 10^8},
+\end{gather*}
+and of two certificates for the polynomials $h = 1 - (2-2t) g$ and $h_\chi = 1 - (2-2t)(g + \chi)$ of degree four. For $h$ it is a positive definite integer matrix $\Gamma$ of order $3$ with $5 \cdot 10^9 \, h(t) = z^T \Gamma z$ for $z = (1, t, t^2)$. For $h_\chi$ it is the list of the five coefficients of $15 \cdot 10^{21} \, h_\chi$ in the Bernstein polynomials of the interval $[T, 1]$, which are positive. Both are data of a few numbers, and we use no checker for the kernel. Let $m_1, m_2, m_3$ be the leading principal minors of $\Gamma$ and $e = \Gamma_{11} \Gamma_{23} - \Gamma_{12} \Gamma_{13}$. The decomposition $\Gamma = L D L^T$, cleared of denominators, is the identity
+$$
+m_1 m_2 \cdot 5 \cdot 10^9 \, h(t) = m_2 \, \big(\Gamma_{11} + \Gamma_{12} t + \Gamma_{13} t^2\big)^2 + \big(m_2 t + e \, t^2\big)^2 + m_1 m_3 \, t^4
+$$
+between polynomials with integer coefficients, and the minors are positive: they are the numbers $1404974$, $673053090519$ and $1313621984186200$. The Bernstein form of $h_\chi$ is an identity of the same kind. The tactic \texttt{ring} verifies both identities, and the two inequalities follow. Theorem \ref{thm:lpmarked} with $n = 9$ then gives the bound $\tfrac{350011972239}{2 \cdot 10^{10}}$ for a configuration with a pair of inner product at least $T$, and this number exceeds $\tfrac{35}{2}$.
+
+\begin{theorem}[Separation, (C1)]\label{thm:separation}
+Let $x_1, \dots, x_9 \in \Sph^3$ be distinct points with $\sum_{i<j} |x_i - x_j|^{-2} \leq \tfrac{35}{2}$. Then $\langle x_i, x_j \rangle < \tfrac{1089}{2000}$ for all $i \neq j$.
+\end{theorem}
+
+This is the theorem \lean{S3N9.separation} (\file{LeanCode/S3N9/Separation.lean}).
+
+\subsection{The typed three-point bound}\label{sec:typed}
+
+We state what a typed three-point certificate proves. Such a certificate divides the points into classes. Let $q$ be the number of classes, let $n_a$ be the number of points of the class $a$, let $D$ be the degree of the certificate and $d = D/2$. The certificate contains
+\begin{itemize}
+    \item for every class $a$ and every $0 \leq k \leq d$ a symmetric matrix $F^a_k$, the \emph{rooted block}, whose rows and columns are indexed by the pairs $(b, i)$ of a class $b$ and an exponent $0 \leq i \leq d - k$;
+    \item for every pair of classes $a \leq b$, a \emph{pair type}, a polynomial $H_{ab}$ in one variable and a box, an interval that contains the inner products of the pairs of this type;
+    \item for every pair of classes $a \leq b$ and every class $c$ a polynomial $p_{ab,c}$ in one variable, the \emph{share} of the pair type for the class $c$;
+    \item for every triple of classes $a \leq b \leq c$, a \emph{triple type}, a number $c_{abc}$ and the data (B2) and (B3) below.
+\end{itemize}
+Let $Q_k = R_k / k!$ with the polynomials $R_0 = 1$, $R_1 = A$, $R_{k+1} = (2k+1) A R_k - k^2 W R_{k-1}$ in $A = t - uv$ and $W = (1-u^2)(1-v^2)$. The \emph{rooted form} of the class $a$ for the classes $b$ and $c$ is
+$$
+s_{a;bc}(u,v,t) = \sum_{k=0}^{d} Q_k(u,v,t) \sum_{i,j=0}^{d-k} F^a_k\big[(b,i),(c,j)\big] \, u^i v^j .
+$$
+For a point $x$ of the class $a$, the root, and points $y$, $z$ of the classes $b$, $c$ it is evaluated at $u = \langle x, y \rangle$, $v = \langle x, z \rangle$, $t = \langle y, z \rangle$. For a pair type $a \leq b$ let $m_c = n_c - \delta_{ca} - \delta_{cb}$ be the number of the points of the class $c$ besides one point of the class $a$ and one of the class $b$. The certificate gives the shares of all classes but the largest class with $m_c > 0$, and the share of this class is defined by the \emph{share equation}
+\begin{equation}\label{eq:shareeq}
+\sum_{c} m_c \, p_{ab,c}(u) = H_{ab}(u) - r_{ab}(u) - r_{ba}(u),
+\end{equation}
+where $r_{ab}(u) = s_{a;ab}(1,u,u) + s_{a;ba}(u,1,u) + s_{a;bb}(u,u,1)$.
+The left-hand side of the identity of the triple type $a \leq b \leq c$ is
+$$
+\lambda_{abc}(u,v,t) = p_{ab,c}(u) + p_{ac,b}(v) + p_{bc,a}(t) - 2 \, \big( s_{a;bc}(u,v,t) + s_{b;ac}(u,t,v) + s_{c;ab}(v,t,u) \big) .
+$$
+For classes in another order, $H$, $p$ and $c$ refer to the sorted classes.
+
+\begin{theorem}[Typed three-point bound]\label{thm:typed}
+Let $d \leq 8$. Suppose that every rooted block is of the form $F^a_k = \sigma \, Y Y^T$ with a real matrix $Y$ and a number $\sigma \geq 0$, and that for every triple type $a \leq b \leq c$ for which three points with these classes exist, $\lambda_{abc} \geq c_{abc}$ holds at all points of the box of the triple type at which the generators of its weights are nonnegative. Let $x_1, \dots, x_N \in \Sph^3$ be points with classes $a_1, \dots, a_N$ such that the class $a$ has $n_a$ points, such that $\langle x_i, x_j \rangle$ lies in the box of its pair type for all $i \neq j$, and such that for all distinct $i, j, k$ the generators of the weights of the triple type of $x_i, x_j, x_k$ are nonnegative at the three inner products. Then
+$$
+\sum_{i<j} H_{a_i a_j}\big(\langle x_i, x_j \rangle\big) \;\geq\; \sum_{i<j<k} c_{a_i a_j a_k} - \sum_{i} s_{a_i; a_i a_i}(1,1,1) .
+$$
+\end{theorem}
+
+This is the theorem \lean{CAP.Wsos.typed\_bound} (\file{LeanCode/CAP/Wsos/TypedBound.lean}). The box of a triple type is the product of the boxes of its three pair types, and the weights and their generators belong to the data (B2). The proof has three parts, the three hypotheses of a summation over the indices of the points (\lean{CAP.Wsos.typed\_sum}).
+\begin{itemize}
+    \item \emph{The rooted forms are positive.} For a root $x_i$ the sum
+    $$
+    \sum_{j,k} s_{a_i; a_j a_k}\big(\langle x_i, x_j \rangle, \langle x_i, x_k \rangle, \langle x_j, x_k \rangle\big)
+    $$
+    over all pairs of points, the root included, is nonnegative. Let $y_j = x_j - \langle x_i, x_j \rangle x_i$. These vectors lie in the orthogonal complement of $x_i$, which has an orthonormal basis of three vectors, and $A = \langle y_j, y_k \rangle$, $W = |y_j|^2 |y_k|^2$ at the three inner products. For vectors $a, b \in \R^3$ with $A = \langle a, b \rangle$ and $W = |a|^2 |b|^2$ the number $R_k$ is $k! \, |a|^k |b|^k P_k(\cos \angle(a,b))$ with the Legendre polynomial $P_k$, and by the addition theorem of the spherical harmonics it is a combination, with positive coefficients, of products $h(a) h(b)$ of $2k+1$ harmonic polynomials $h$. For $k \leq 8$ these identities are written out in \file{LeanCode/CAP/Wsos/Legendre.lean}, and each of them is proved by the tactic \texttt{ring}. Hence the matrix with the entries $R_k(\langle y_j, y_k \rangle, |y_j|^2 |y_k|^2)$ is positive semidefinite (\lean{CAP.Wsos.qV\_quad\_nonneg}), and with $F^a_k = \sigma Y Y^T$ the sum is a sum of quadratic forms of these matrices.
+    \item \emph{The share equation at points.} For $i \neq j$ the sum of the shares $p_{a_i a_j, a_k}(\langle x_i, x_j \rangle)$ over the further points $x_k$ is the left-hand side of \eqref{eq:shareeq}, since $m_c$ is the number of the further points of the class $c$. On the right-hand side, $r_{ab}$ consists of the rooted forms of the root $x_i$ at the pairs of points in which $x_i$ or $x_j$ occurs twice. At $(1, u, u)$ and $(u, 1, u)$ one has $A = W = 0$, so that only $Q_0 = 1$ remains, and at $(u, u, 1)$ one has $W = A^2$ and $Q_k = A^k$.
+    \item \emph{The inequality of the triple types.} For distinct points whose classes are in order it is the hypothesis. The expression $\lambda$ at three points is symmetric in the points, since the rooted blocks are symmetric.
+\end{itemize}
+The summation adds the inequalities of all triples of distinct points, replaces the shares by the share equation and removes the rooted forms by their positivity. What remains of the rooted forms are the terms $s_{a_i;a_i a_i}(1,1,1)$, in which all three points coincide.
+
+\emph{The data of a triple type.} For a triple type we enclose each interval of its box in an interval $[(c - \rho)/2^m, (c + \rho)/2^m]$ with integers $\rho \geq 1$ and $c$, where $m = 8$, and we write
+$$
+u = \frac{\rho_1 x + c_1}{2^m}, \qquad v = \frac{\rho_2 y + c_2}{2^m}, \qquad t = \frac{\rho_3 z + c_3}{2^m}, \qquad x, y, z \in [-1,1].
+$$
+All polynomials of the triple type are polynomials in $x, y, z$. The data of a triple type are the following, all of which are integers.
+\begin{enumerate}
+    \item[(B1)] The data that define $\lambda$: the pair polynomials and the shares, whose coefficients are dyadic numbers, and for every rooted block an integer matrix $Y$ such that the block is $4^{-s} \, Y Y^T$. The share of the last class of a pair type is given by the share equation.
+    \item[(B2)] For every \emph{weight} $g$, a product of \emph{generators} of the domain, an upper triangular integer matrix. Its columns are the coefficients of polynomials $\xi_{g,1}, \xi_{g,2}, \dots$ in the monomials of $x, y, z$ of degree at most $\delta = \lfloor (D - \deg g)/2 \rfloor$. The weight carries the sum of the squares of these polynomials.
+    \item[(B3)] An integer $c$ and integers $N_k$, $k = (k_1, k_2, k_3)$, with
+    \begin{equation}\label{eq:boxtest}
+    2^D \Big( \lambda - c - \sum_g \mu_g \, g \sum_i \xi_{g,i}^2 \Big) = \sum_{k} N_k \, T_{k_1}(x) \, T_{k_2}(y) \, T_{k_3}(z), \qquad \sum_{k \neq 0} |N_k| \leq N_0 ,
+    \end{equation}
+    where $\lambda$ and $g$ are multiplied by the common denominator of the triple type, $\mu_g$ is a positive integer, and $T_k$ denotes the Chebyshev polynomial of the first kind of degree $k$.
+\end{enumerate}
+The right-hand side of the identity in \eqref{eq:boxtest} is nonnegative on the cube $[-1,1]^3$, since $|T_k| \leq 1$ on $[-1,1]$. Hence $\lambda \geq c$ at every point of the cube at which the weights are nonnegative. A weight with its squares is nonnegative on the domain by its form, and a rooted block is positive semidefinite by its form. The certificate needs no test of positive semidefiniteness.
+
+\emph{The checker.} The checker \lean{CAP.Wsos.checkTy} (\file{LeanCode/CAP/Wsos/Kernel.lean}) verifies \eqref{eq:boxtest} for one triple type. A polynomial in $x, y, z$ is one natural number: the monomial $x^a y^b z^c$ stands at the slot $a + k_1 b + k_2 c$ of width $W$, where $(k_1, k_2)$ is chosen such that this map is injective on the exponents of total degree at most $D$, and all arithmetic is modulo $2^M$, where $M$ is $W$ times the number of slots. Sums and products of such numbers are the numbers of the sums and products of the polynomials. The checker forms the number of the left-hand side from the data (B1) and (B2): the three variables $\rho x + c$ and their powers, the shares, the rooted forms with the kernels $Q_k$, which it computes by their recurrence, the generators, and the squares. It forms the number of the right-hand side from the integers $N_k$ and the Chebyshev polynomials, it compares the two numbers, and it tests the inequality of \eqref{eq:boxtest}. Since the arithmetic is modular, it computes a bound for the sum of the absolute values of the coefficients of both sides from the sizes of the data and tests that this bound is below $2^{W-1}$. The slot width $W$ is $192$ to $256$ bits. The rooted blocks enter a triple type through their Gram matrices $G = Y Y^T$. A second checker, \lean{CAP.Wsos.gramOk}, derives $G$ from the columns of $Y$ once for a certificate.
+
+Both checkers have a theorem of soundness. Let the map from the monomials of total degree at most $D$ to the slots be injective, and let \lean{checkTy} return \lean{true} for the data of a triple type. Then for all real $x, y, z \in [-1,1]$ at which all generators of all weights are nonnegative, the left-hand side $\lambda$ that the data define is at least $c$ (\lean{CAP.Wsos.checkTy\_sound}). If \lean{gramOk} returns \lean{true}, then $G$ is the sum of the matrices $y y^T$ over the columns $y$ of $Y$ (\lean{CAP.Wsos.gramOk\_sound}). These are the two hypotheses of Theorem \ref{thm:typed}.
+
+\emph{From the typed bound to the energy.} Theorem \ref{thm:typed} bounds the sum of the pair polynomials. Three further checks for the kernel lead to a bound for the energy on the domain that the certificate declares (\file{LeanCode/CAP/Wsos/CertKernel.lean}). Each of them has a theorem of soundness.
+\begin{enumerate}
+    \item[(K1)] \emph{The bound as a number.} For points with classes, the sum of a function of the classes over the triples of distinct points is the sum over the triples of classes $(a,b,c)$ with the multiplicities $n_a \, (n_b - \delta_{ab}) \, (n_c - \delta_{ac} - \delta_{bc})$. At $u = v = t = 1$ one has $A = W = 0$, so that $s_{a;aa}(1,1,1)$ is the sum of the entries of $F^a_0$ with the indices $(a,i)$, $(a,j)$. With these numbers the check \lean{boundOk} compares the right-hand side of Theorem \ref{thm:typed} with a target $\tau$; this is an inequality between two natural numbers.
+    \item[(K2)] \emph{The sign conditions.} The pair polynomial of a pair type is $H = 2^{-s} H_s$ with a polynomial $H_s$ with integer coefficients, and the certificate requires $H \leq f$ on the interval $[\alpha, \beta]$ of the pair type, where $\alpha$, $\beta$ are rational numbers. The check \lean{signOk} verifies this with a witness for the sign of the polynomial
+    $$
+    p(y) = \delta^{n} \, \Big( 2^{s} - \Big(2 - \frac{2y}{\delta}\Big) \, H_s\Big(\frac{y}{\delta}\Big) \Big), \qquad n = D + 1,
+    $$
+    on the interval $[\delta \alpha, \delta \beta]$, where $\delta$ is the common denominator of $\alpha$ and $\beta$. The witness is a list of cut points of this interval. For two consecutive cut points $c$, $c'$ the substitution $y = (c + c' z)/(1 + z)$ with $z \geq 0$ turns $(1 + z)^n \, p$ into a polynomial in $z$, and the check tests that its coefficients are nonnegative (\file{LeanCode/CAP/UniPos/}). The interval may end at $1$.
+    \item[(K3)] \emph{The domain.} A certificate declares its domain by the interval of every pair type and by polynomial inequalities in the three inner products of a triple type. The check \lean{domOk} tests that every interval lies in the box of its pair type, and that every generator of every weight is one of the following polynomials: a polynomial $w - \alpha$ or $\beta - w$, where $w$ is one of the three variables and $[\alpha, \beta]$ is the interval of its pair type; the Gram determinant $1 - u^2 - v^2 - t^2 + 2uvt$; one of the polynomials $2 + 2u - (v+t)^2$ and $2 - 2u - (v-t)^2$ or of the four polynomials that arise from these two by a permutation of the three points; a polynomial of a list that belongs to the triple type.
+\end{enumerate}
+The polynomials of the first three kinds in (K3) are nonnegative at the inner products of three unit vectors whose inner products lie in the intervals. For the Gram determinant we use the vectors $y_j$, $y_k$ of the proof of Theorem \ref{thm:typed}: it equals $|y_j|^2 |y_k|^2 - \langle y_j, y_k \rangle^2$, which is nonnegative by the inequality of Cauchy and Schwarz. The six further polynomials express the inequality of Cauchy and Schwarz for the sum or the difference of two of the points and the third point, since $|x_i \pm x_j|^2 = 2 \pm 2 \langle x_i, x_j \rangle$. The polynomials of the list remain hypotheses.
+
+\begin{theorem}[A typed certificate]\label{thm:cert}
+Let the data of a typed certificate satisfy the hypotheses of Theorem \ref{thm:typed}, and let the checks \textup{(K1)} with the target $\tau$, \textup{(K2)} and \textup{(K3)} succeed. Let $x_1, \dots, x_N \in \Sph^3$ be distinct points with classes $a_1, \dots, a_N$ such that the class $a$ has $n_a$ points, such that $\langle x_i, x_j \rangle$ lies in the interval of its pair type for all $i \neq j$, and such that for all distinct $i, j, k$ with $a_i \leq a_j \leq a_k$ every polynomial of the list of the triple type $(a_i, a_j, a_k)$ is nonnegative at $(\langle x_i, x_j \rangle, \langle x_i, x_k \rangle, \langle x_j, x_k \rangle)$. Then
+$$
+\sum_{i<j} \frac{1}{|x_i - x_j|^2} > \tau .
+$$
+\end{theorem}
+
+This is the theorem \lean{CAP.Wsos.energy\_gt} (\file{LeanCode/CAP/Wsos/Energy.lean}). Its proof applies Theorem \ref{thm:typed}, whose hypotheses on the points follow from (K3), it bounds every pair polynomial by $f$ with (K2), where $\langle x_i, x_j \rangle < 1$ because the points are distinct, and it evaluates the bound with (K1).
+
+\emph{The statement} (C2). The proof uses $110$ typed certificates: $8$ of the degree $D = 8$, $92$ of the degree $10$ and $10$ of the degree $12$, with $3$ to $47$ triple types each and $1897$ triple types in all. They have $1106$ sign conditions. The kernel accepts the checks of all of them with the target $\tau = \tfrac{35}{2}$; the bounds of the certificates exceed $\tfrac{35}{2}$ by at least $9.2 \cdot 10^{-5}$. For the certificate with the modules \lean{W<i>C} and \lean{W<i>} of the folder \file{Certificates/Typed/}, the statement module \file{Certificates/Typed/T8S.lean} contains the theorem
+\begin{center}
+\ttfamily\footnotesize
+\begin{tabular}{@{}l@{}}
+theorem energy \char123{}cls : Fin 9 $\to$ $\N$\char125{} \char123{}x : Fin 9 $\to$ EuclideanSpace $\R$ (Fin 4)\char125{} \\
+\quad (hS : CAP.Wsos.InSource params.q cert dom cls x) : \\
+\quad (35 : $\R$) / 2 < $\sum$ i, $\sum$ j with i < j, 1 / $\|$x i - x j$\|$ \^{} 2
+\end{tabular}
+\end{center}
+in the namespace \lean{T8N.W<i>}. Here \lean{cls} assigns a class to every point, and \lean{InSource} states the hypotheses of Theorem \ref{thm:cert} on the points, with the numbers of points of the classes from \lean{cert} and with the domain \lean{dom} of the certificate.
+
+\subsection{The claims}\label{sec:s3n9claims}
+
+Theorem \ref{thm:cert} bounds the energy on the domain that a typed certificate declares: intervals for the inner products of the pair types, and for every triple type a list of polynomial inequalities, which are hypotheses of the theorem. The proof applies a certificate to a \emph{claim}. A claim consists of the numbers $n_1, \dots, n_q$ of points of $q$ classes and of an interval $K_{ab} \subseteq [-1, T]$ for every pair of classes $a \leq b$. A configuration with classes \emph{satisfies} the claim if the class $a$ has $n_a$ points and $t_{ij} \in K_{a_i a_j}$ for all $i \neq j$. A claim describes a cell, or a part of a cell, by intervals alone. The statement (C3) is that the declared domain of a certificate contains its claim, such that the inequalities of the lists follow from the intervals of the claim.
+
+A pair type $\omega = (a, a')$ is a \emph{one-edge type} of a claim if exactly one pair of points has this type, that is, if $a = a'$ and $n_a = 2$, or $a \neq a'$ and $n_a = n_{a'} = 1$. The two points of this pair are \emph{partners}, and $c_\omega = - \max K_\omega$ is the \emph{cap} of $\omega$. If $c_\omega$ is close to $1$, then two partners are nearly antipodal, and the following two inequalities restrict the position of every further point.
+
+\begin{lemma}[Two inequalities with a witness]\label{lma:witness}
+Let $p$, $p'$, $y$, $q_1$, $q_2$ be unit vectors of a real inner product space, and let $c, T \in \R$ with $\langle p, p' \rangle \leq -c$.
+\begin{enumerate}
+    \item[(i)] If $\langle p', y \rangle \leq T$, then $\langle p, y \rangle \geq -\alpha T - \sqrt{1 + \alpha^2 - 2 \alpha c}$ for every $\alpha \geq 0$.
+    \item[(ii)] If $\langle p', q_1 \rangle \leq T$ and $\langle p', q_2 \rangle \leq T$, then for every $\alpha \geq 0$ and every $\beta > 0$
+    $$
+    \langle p, q_1 \rangle + \langle p, q_2 \rangle + \beta \, \langle q_1, q_2 \rangle + \beta + 2 \alpha T + \frac{1 + \alpha^2 - 2 \alpha c}{2 \beta} \;\geq\; 0 .
+    $$
+\end{enumerate}
+\end{lemma}
+
+Both statements are the inequality of Cauchy and Schwarz for the vector $p + \alpha p'$, whose squared norm is at most $1 + \alpha^2 - 2 \alpha c$: in (i) with the vector $y$, and in (ii) with the vector $q_1 + q_2$, followed by the inequality between the arithmetic and the geometric mean. They are the theorems \lean{CAP.Wsos.cap\_witness} and \lean{CAP.Wsos.support\_witness} (\file{LeanCode/CAP/Wsos/Support.lean}). Statement (i) with the best value $\alpha = c - T \sqrt{(1-c^2)/(1-T^2)}$ is the \emph{cap bound}
+\begin{equation}\label{eq:capbound}
+\langle p, y \rangle \;\geq\; L(c) = -\Big( c \, T + \sqrt{(1-c^2)(1-T^2)} \Big), \qquad T \leq c < 1 .
+\end{equation}
+
+\emph{The conditions.} Let a certificate declare the intervals $J_{ab}$ and the lists of polynomials, and let a claim with the same classes be given. The declared domain \emph{contains} the claim if the following two conditions hold.
+\begin{enumerate}
+    \item[(D1)] For every pair type $(a,b)$, $\max K_{ab} \leq \max J_{ab}$, and $\min J_{ab} \leq \min K_{ab}$ or $\min J_{ab} \leq L(c_\omega)$ for a one-edge type $\omega$ that contains $a$ such that the class of the partner is not $b$, or that contains $b$ such that the class of the partner is not $a$.
+    \item[(D2)] Every polynomial of the list of a triple type is of the form $\kappa \, (u + v) + B \, t + G$ with $\kappa, B > 0$, or arises from this form by a permutation of the three points. Here $u$ and $v$ are the inner products of one point of the triple, the \emph{root}, with the two other points. The root belongs to a one-edge type $\omega$, the class of its partner is not the class of one of the two other points, and $G/\kappa \geq \beta + 2 \alpha T + (1 + \alpha^2 - 2 \alpha c_\omega)/(2\beta)$ for $\beta = B/\kappa$ and some $\alpha \geq 0$.
+\end{enumerate}
+
+\emph{The check.} The number $L(c)$ contains a square root. The check receives a witness instead. For a pair type whose interval $J_{ab}$ begins below $K_{ab}$, the witness names the one-edge type $\omega$ and a rational number $\alpha \geq 0$, and the check \lean{claimOk} (\file{LeanCode/CAP/Wsos/CertKernel.lean}) tests
+$$
+m := - \min J_{ab} - \alpha T \geq 0, \qquad 1 + \alpha^2 - 2 \alpha c_\omega \leq m^2 .
+$$
+By Lemma \ref{lma:witness}(i) this implies $\langle p, y \rangle \geq \min J_{ab}$. For a polynomial of a list the witness names the root, the type $\omega$ and $\alpha$, and the check tests the inequality of (D2). All tests are inequalities between natural numbers, after the denominators are cleared. Neither a square root nor an angle occurs in the check or in the proof of its soundness.
+
+\begin{theorem}[A claim]\label{thm:claim}
+Let the data of a typed certificate satisfy the hypotheses of Theorem \ref{thm:typed}, let the checks \textup{(K1)} with the target $\tau$, \textup{(K2)} and \textup{(K3)} of Theorem \ref{thm:cert} succeed, and let the check \lean{claimOk} succeed for a claim with $T < 1$. Then every configuration of points of $\Sph^3$ with classes that satisfies the claim has
+$$
+\sum_{i<j} \frac{1}{|x_i - x_j|^2} > \tau .
+$$
+\end{theorem}
+
+This is the theorem \lean{CAP.Wsos.energy\_gt\_claim} (\file{LeanCode/CAP/Wsos/Claims.lean}). Its main step is the theorem \lean{inSource\_of\_claim} of the same file: a configuration that satisfies the claim lies in the declared domain. For the proof one needs the partner of a point, which exists because the class of a one-edge type has the stated number of points. In contrast to Theorem \ref{thm:cert}, the theorem has no hypothesis on triples of points, and the points are distinct because their inner products are at most $T < 1$.
+
+\emph{The statement} (C3). The $110$ typed certificates have $119$ claims, in $54$ cells; $4$ certificates serve $13$ of them. The kernel accepts the check \lean{claimOk} for all $119$ claims. The checks verify $705$ lower ends of intervals by Lemma \ref{lma:witness}(i) and $5668$ polynomials of lists by Lemma \ref{lma:witness}(ii). The statement module contains, for every claim, the theorem
+\begin{center}
+\ttfamily\footnotesize
+\begin{tabular}{@{}l@{}}
+theorem energy\_claim0 \char123{}cls : Fin 9 $\to$ $\N$\char125{} \char123{}x : Fin 9 $\to$ EuclideanSpace $\R$ (Fin 4)\char125{} \\
+\quad (hC : CAP.Wsos.InClaim params.q cert claim0.K cls x) : \\
+\quad (35 : $\R$) / 2 < $\sum$ i, $\sum$ j with i < j, 1 / $\|$x i - x j$\|$ \^{} 2
+\end{tabular}
+\end{center}
+where \lean{InClaim} states that the points are unit vectors with the numbers of points of the classes of the certificate and that the inner product of every pair of distinct points lies in the interval \lean{claim0.K} of its pair type. With the claims, the $5414$ polynomial inequalities that are hypotheses of the theorems of the certificates are proved.
+
+\emph{The statement} (C4). The certificate of the first cell is a typed certificate with one class of nine points and of the degree $D = 16$, the largest degree that Theorem \ref{thm:typed} admits. Its domain is $t_{ij} \geq \ell$ for all $i \neq j$, with $\ell = -\tfrac{361}{400}$, and its bound is $17.5000908$. Its modules are \lean{WL0C} and \lean{WL0}. The statement module contains the theorem \lean{T8N.WL0.energy} of the certificate, the bound $\tfrac{35}{2}$ for nine distinct points of $\Sph^3$ with $t_{ij} \geq \ell$, and the theorem \lean{T8N.WL0.energy\_claim0} of its claim, in which all inner products lie in $[\ell, T]$.
+
+\subsection{The constants of the cells}\label{sec:s3n9cells}
+
+The certificates of the second kind are stated on \emph{Gram--Schmidt cells}. A cell has the caps $c_A$, $c_B$ of two nearly antipodal pairs, a tilt bound $\delta$, the separation bound $T$, and twelve constants $\bar\sigma$, $\varepsilon_{AP}$, $\varepsilon_{AQ}$, $\kappa_A$, $\varepsilon_{BP}$, $\varepsilon_{BQ}$, $\kappa_B$, $\kappa_\theta$, $\varepsilon_R$, $\sigma_{AB}$, $\sigma_{AR}$, $\sigma_{BR}$, which bound the coordinates of the points in a frame that is built from the two pairs (Section \ref{sec:frame}). Let $\eta_A = (1 - c_A)/2$ and $\eta_B = (1 - c_B)/2$, let
+$$
+c^* = \sqrt{(1 - \bar\sigma^2)(1 - \eta_B)} - \bar\sigma \sqrt{\eta_B}, \qquad s^* = \bar\sigma \sqrt{1 - \eta_B} + \sqrt{(1 - \bar\sigma^2) \, \eta_B},
+$$
+and let $\mathcal{H} = T \sqrt{(1 + c)/2} + \sqrt{(1 - c)(1 - T^2)/2}$ for $c = \min (c_A, c_B)$. The constants have to satisfy the following $17$ conditions.
+\begin{enumerate}
+    \item[(V1)] $2 \delta \leq \bar\sigma \sqrt{(1 + c_A)(1 + c_B)}$ and $\bar\sigma^2 + \eta_B < 1$.
+    \item[(V2)] $1 - \sqrt{1 - \eta_A} \leq \varepsilon_{AP} \leq 1$, $\sqrt{\eta_A} \leq \varepsilon_{AQ}$ and $\eta_A \leq \kappa_A^2 (1 - \eta_A)$.
+    \item[(V3)] $1 - c^* \leq \varepsilon_{BP}$, $s^* \leq \varepsilon_{BQ}$, $s^* \leq \kappa_B \, c^*$ and $\bar\sigma^2 \leq \kappa_\theta^2 (1 - \bar\sigma^2)$.
+    \item[(V4)] $(1 + \bar\sigma) \, \mathcal{H} \leq \varepsilon_R \sqrt{1 - \bar\sigma^2}$, $\varepsilon_R < 1$ and $\eta_A, \eta_B \leq 1 - T^2$.
+    \item[(V5)] $\sqrt{\eta_A \eta_B} + \varepsilon_{AP} \varepsilon_{BQ} + \varepsilon_{BP} \varepsilon_{AQ} \leq \sigma_{AB}$, $\sqrt{\eta_A} + (\varepsilon_{AP} + \varepsilon_{AQ}) \, \varepsilon_R \leq \sigma_{AR}$ and $\sqrt{\eta_B} + (\varepsilon_{BP} + \varepsilon_{BQ}) \, \varepsilon_R \leq \sigma_{BR}$.
+\end{enumerate}
+The proof uses two sets of constants, for $c_A = c_B = \tfrac{99}{100}$, $T = \tfrac{1089}{2000}$ and the tilt bounds $\delta = \tfrac{1}{10}$ and $\delta = \tfrac{3}{10}$. The constants are fractions with denominators up to $5 \cdot 10^7$; for $\delta = \tfrac{1}{10}$, for example, $\bar\sigma = \tfrac{2512563}{25000000}$ and $\varepsilon_R = \tfrac{833}{1250}$. The statement (C5) is that both sets satisfy the conditions, and that
+\begin{equation}\label{eq:lstar}
+L^* := -\tfrac{657377}{10^6} \;\leq\; L\big(\tfrac{99}{100}\big)
+\end{equation}
+for the cap bound \eqref{eq:capbound}. Every condition is linear in the square roots that occur in it. In the file \file{LeanCode/S3N9/GramSchmidtCells.lean} each square root is enclosed between two fractions with the denominator $10^{14}$, each enclosure is proved by squaring, and each condition follows by the tactic \texttt{linarith}. The file defines the conditions as the structure \lean{GSCell.Valid} and proves the theorems \lean{cell10\_valid}, \lean{cell30\_valid} and \lean{lstar\_le}. In the comments of this file the conditions (V1) to (V5) are called (C1) to (C5).
+
+\subsection{The virtual-root bound}\label{sec:s3n9vr}
+
+The statement (C6) concerns $11$ certificates of a second kind. We state what such a certificate proves.
+
+\emph{The frame.} A \emph{labelled configuration} consists of nine points $a, a', b, b', y_1, \dots, y_5$ of $\Sph^3$ and of an orthonormal pair $(e, f)$ of vectors of $\R^4$, the \emph{frame}. The points $a, a'$ and $b, b'$ form the two \emph{pairs}, and $y_1, \dots, y_5$ are the \emph{ring points}. For a point $x$ let
+$$
+u_x = \langle x, e \rangle, \qquad v_x = \langle x, f \rangle, \qquad \zeta_x = x - u_x e - v_x f, \qquad R_x = |\zeta_x|^2 = 1 - u_x^2 - v_x^2 .
+$$
+The vectors $\zeta_x$ lie in a plane, which we identify with $\C$. The \emph{two-root kernels} are $Q_k(x, x') = \operatorname{Re} \big( (\zeta_x \overline{\zeta_{x'}})^k \big)$ for $k \geq 0$. With $H = \langle \zeta_x, \zeta_{x'} \rangle$ they satisfy $Q_0 = 1$, $Q_1 = H$ and $Q_k = 2 H \, Q_{k-1} - R_x R_{x'} \, Q_{k-2}$, and for real numbers $c_x$ the sum $\sum_{x, x'} c_x c_{x'} Q_k(x, x') = \big| \sum_x c_x \zeta_x^k \big|^2$ is nonnegative. The frame of the proof arises from the two pairs by the orthogonalization of $a - a'$ and $b - b'$ (Section \ref{sec:frame}). Then $a - a'$ is a multiple of $e$, and $b - b'$ lies in the plane of $e$ and $f$; the bound uses these two properties only.
+
+\emph{Coordinates and record types.} Every point has two \emph{class coordinates} $(p, q)$. For $a$ and $a'$ they are defined by $u = \pm (1 - p / 2^{m_P})$ and $v = q / 2^{m_Q}$ with the sign $+$ for $a$, for $b$ and $b'$ by the same formulas with $u$ and $v$ exchanged and other shifts, and for a ring point by $(p, q) = (u, v)$. The ring points are divided into \emph{classes}. A pair of labels has one of six \emph{kinds}: the two points of the first pair, the two points of the second pair, a point of each pair, a point of the first pair and a ring point, a point of the second pair and a ring point, and two ring points. A \emph{record type} is a kind together with the classes of its ring points; the $36$ pairs of labels of a certificate have $10$ or $18$ record types. The \emph{data} of a pair is a point $\mathbf{y} \in \R^5$: the class coordinates of its two points, with signs that depend on the labels, and a fifth coordinate. The fifth coordinate is $0$ for the first two kinds, a multiple of the \emph{deviation} $t - (\text{linear part})$ of the inner product $t$ for the next three kinds, for example $t_{\alpha y} \mp u_y$ for a point $\alpha$ of the first pair and a ring point $y$, and the centred inner product for two ring points.
+
+\emph{The certificate.} A virtual-root certificate consists of the following data.
+\begin{enumerate}
+    \item[(a)] \emph{The kernel.} For every $k \leq D/2$ a number $s_k$ and a list of blocks. A block is an integer matrix whose rows belong to monomials $p^i q^j$ in the class coordinates of the classes, with fixed parities of $i$ and $j$. A column $c$ of a block and a point $x$ give the number $\Psi_c(x)$: the value at the class coordinates of $x$ of the polynomial that the column defines for the class of $x$, with a sign for the points $a'$ and $b'$. The kernel of the certificate is
+    $$
+    K(x, x') = \sum_k 4^{-s_k} \, Q_k(x, x') \sum_{\text{blocks}} \sum_c \Psi_c(x) \, \Psi_c(x') .
+    $$
+    \item[(b)] \emph{The records.} For every record type a constant $C$, a polynomial $h$, the \emph{minorant}, two polynomials $\pi_1$, $\pi_2$ in the class coordinates of the two end points, the \emph{exchange polynomials}, and an identity between polynomials in the five variables $\mathbf{y}$,
+    \begin{equation}\label{eq:vrrecord}
+    2^E \big( h - C - 2 K - \pi_1 - \pi_2 \big) \;=\; \sum_w 2^{a_w} \, g_w \sum_i \xi_{w,i}^2 \;+\; r , \qquad \|r\|_1 \leq \rho ,
+    \end{equation}
+    where $K$ is the kernel of the two end points as a polynomial in $\mathbf{y}$, the $\xi_{w,i}$ are integer polynomials, and $\|r\|_1$ is the sum of the absolute values of the coefficients of $r$. The \emph{weights} $g_w$ are fixed polynomials of the kind: $1$; for an end point of a pair the six polynomials $R$, $\eta - R$, $a_P - p$, $a_Q^2 - q^2$, $\kappa^2 M^2 - N^2$ and $\gamma_0 - \gamma_1 R - \gamma_2 N^2$, where $(M, N) = (u, v)$ for the first pair and $(M, N) = (v, u)$ for the second pair; for a ring end point $R$, $\varepsilon^2 - p^2$, $\varepsilon^2 - q^2$ and the two \emph{guards} $\bar h - (p^2 + q^2)$ and $(p^2 + q^2) - \underline h$; and for the pair $(t - t^-)(t^+ - t)$, the bound $a_S^2 - s^2$ of the deviation, the Gram determinants of $(e, x, x')$ and of $(f, x, x')$, $R_x R_{x'} - H^2$, and for the second pair an inequality for the direction of $b - b'$.
+    \item[(c)] \emph{The minorants.} For every record type an identity $2^E \big( 1 - 2 (1 - t) \, h \big) = \sum_w 2^{a_w} g_w \sum_i \xi_{w,i}^2 + r$ in at most two variables with $\|r\|_1 \leq \rho$, whose weights are the bounds of the variables of $h$ and the interval of $t$.
+    \item[(d)] \emph{The labels.} For every label $l$ an identity $2^E \big( \sum_{o \neq l} \pi(l; o) - K(l, l) - \Lambda_l \big) = r$ in the class coordinates of $l$ with $\|r\|_1 \leq \rho$. Here $\pi(l; o)$ is the exchange polynomial of the record type of the pair $\{l, o\}$ for the end point $l$, with the signs of this pair, and $\Lambda_l$ is the guard term: $\lambda \, h_l^2 (\bar h - h_l) + \lambda' h_l$ with $h_l = p^2 + q^2$ and numbers $\lambda, \lambda' \geq 0$ for a ring label, and $0$ otherwise.
+\end{enumerate}
+The \emph{piece} of the certificate consists of the labelled configurations at which all weights are nonnegative: $a - a'$ and $b - b'$ are as above, the coordinates of the points of the pairs and of the ring points satisfy the inequalities of the weights of (b) with the constants of the certificate, the ring points satisfy the guards, the inner product of every pair lies in the interval $[t^-, t^+]$ of its record type with $t^+ < 1$, and the deviations satisfy $|s| \leq a_S$. The \emph{bound} of the certificate is the number
+$$
+\beta = \sum_{\text{pairs}} \Big( C - \frac{\rho}{2^E} - \frac{\rho^{\mathrm m}}{2^{E^{\mathrm m} + 1} (1 - t^+)} \Big) + \sum_{\text{labels}} \Big( \lambda' \underline h{} - \frac{\rho}{2^E} \Big),
+$$
+with the constants, scales and norms of the record type of each pair, of its minorant, and of each label.
+
+\begin{theorem}[Virtual-root bound]\label{thm:vr}
+Let the data \textup{(a)} to \textup{(d)} be given such that every pair of labels has a record type of its kind with the classes of its two labels, and let the identities \textup{(b)}, \textup{(c)} and \textup{(d)} hold with the stated bounds for the residuals. Then every labelled configuration $X$ in the piece of the certificate satisfies
+$$
+\sum_{i<j} \frac{1}{|x_i - x_j|^2} \;\geq\; \beta .
+$$
+\end{theorem}
+
+This is the theorem \lean{CAP.VR.energy\_gt} (\file{LeanCode/CAP/VR/Sphere.lean}). The piece is the structure \lean{CAP.VR.InPieceS}. At the data of a pair in the piece all variables lie in $[-1, 1]$, so the residual of \eqref{eq:vrrecord} is at most $\rho$ in absolute value, and the weights are nonnegative; hence $h - C - 2K - \pi_1 - \pi_2 \geq -\rho / 2^E$ there. The identity (c) gives $f(t) \geq h - \rho^{\mathrm m} / (2^{E^{\mathrm m}+1} (1 - t^+))$. The polynomials of the record type, evaluated at the data of the pair, are the kernel and the exchange values of its two points: the signs in the data and the parities of the monomials of the blocks cancel. The sum over the $36$ pairs then contains every exchange value $\pi(l; o)$ once, and (d) bounds their sum for a label from below by $K(l, l) + \Lambda_l - \rho/2^E$. What remains is the sum of $K$ over all $81$ ordered pairs of labels, which is nonnegative by the property of the kernels $Q_k$, and the guard terms, which are at least $\lambda' \underline h$. The formalization has three layers: the theorem for a configuration that is given by the coordinates $u$, $v$ and $\zeta$ of its points (\lean{energy\_coords}), six theorems that establish the facts of a pair for the six kinds (\lean{rec\_facts}), and the passage from nine vectors of $\R^4$ to coordinates by an orthonormal basis that extends the frame.
+
+\emph{The checker.} The identities (b) are identities between polynomials of degree $10$ in five variables. As for the typed certificates, a polynomial is a natural number: its value at the point $X_i = 2^{W k_i}$ with a slot width $W$ and strides $k_1, \dots, k_5$, so that the monomial $X^e$ has the slot $\sum_i k_i e_i$. The left-hand side of an identity is built from the data by sums, products, multiples and monomials, and from the sums of squares of the columns. It is defined once, for an arbitrary set of these operations (\lean{CAP.VR.Ops}). The checker evaluates this definition with pairs of natural numbers, which are the positive and the negative part of the value at the point, and with small numbers that bound the sum of the absolute values of the coefficients, the degrees, the largest slot and the parity classes of the monomials. The residual is computed and then tested: the checker forms two numbers $R^+$, $R^-$ from the positive part $P$ and the negative part $N$ of the left-hand side minus the sums of squares, and it tests that $P + R^- = N + R^+$, that the digits of $R^+$ and $R^-$ are below a bound, and that the sums of their digits add up to at most $\rho$. The strides have to be injective on the monomials that can occur. This is a test in the kernel as well (\lean{CAP.VR.layoutOk}, with the theorem \lean{layoutOk\_sound}).
+
+\emph{The statement} (C6). The $11$ certificates belong to the leaves \lean{QW0}, \lean{WX1} to \lean{WX5} and \lean{WY1} to \lean{WY5} of the last cell (Section \ref{sec:core}). A certificate has several modules in the folder \file{Certificates/VirtualRoot/}: one for the data that all identities share and for the checks of the labels and of the bound (\lean{<leaf>C}), one for every record type (\lean{<leaf>R<i>}), and one for the minorants and the labels (\lean{<leaf>M}). The certificates have $150$ record types and $399$ identities with $154\,177$ columns of sums of squares; the slot widths are $128$ to $184$ bits. The kernel accepts all of them, and their bounds exceed $\tfrac{35}{2}$ by at least $2.36 \cdot 10^{-4}$. The statement module \file{Certificates/VirtualRoot/T8VS.lean} contains, in the namespace \lean{T8V.<leaf>} of every certificate, the theorem
+\begin{center}
+\ttfamily\footnotesize
+\begin{tabular}{@{}l@{}}
+theorem energy \char123{}x : Fin 9 $\to$ EuclideanSpace $\R$ (Fin 4)\char125{} \\
+\quad \char123{}e f : EuclideanSpace $\R$ (Fin 4)\char125{} (h : CAP.VR.InPieceS par heads x e f) : \\
+\quad (35 : $\R$) / 2 < $\sum$ i, $\sum$ j with i < j, 1 / $\|$x i - x j$\|$ \^{} 2
+\end{tabular}
+\end{center}
+The piece is stated with the frame as a datum and with the inequalities of the weights as hypotheses. That the frame of a configuration of a cell satisfies these inequalities is the cell lemma (Section \ref{sec:frame}), an analytic statement; its constants are those of (C5).
+
+\subsection{The sharp certificate}\label{sec:s3n9sharp}
+
+The statement (C7) concerns one virtual-root certificate, on the piece of the last cell that contains the minimizer. Its bound is $\tfrac{35}{2}$, the minimal energy. No margin absorbs a residual: the identities hold exactly.
+
+\emph{Exact certificates.} An \emph{exact certificate} consists of the data (a) to (d) of Section \ref{sec:s3n9vr} with $\rho = 0$ in every identity, of a natural number $\nu \geq 1$, and of an \emph{exact part} for every weight of the records and of the minorants. The number $\nu$ stands for a common denominator: the certificate is one for the function $\nu f$, and the identity (c) reads $2^E \big( \nu - 2 (1 - t) \, h \big) = \dots$. The exact part of a weight $g_w$ is a number $b_w$ and a list of \emph{terms} $A(X_1^2, \dots, X_5^2) \, \zeta^2$, where $A$ is a polynomial with natural coefficients and $\zeta$ is an integer polynomial. The weight then contributes
+$$
+g_w \Big( 2^{a_w} \sum_i \xi_{w,i}^2 + 2^{b_w} \sum_{\text{terms}} A(X^2) \, \zeta^2 \Big)
+$$
+to its identity. A term is nonnegative at every real point. The \emph{bound} of an exact certificate is $\beta = \nu^{-1} \big( \sum_{\text{pairs}} C + \sum_{\text{labels}} \lambda' \underline h \big)$.
+
+\begin{theorem}[Virtual-root bound for an exact certificate]\label{thm:vrexact}
+Let the data of an exact certificate be given such that every pair of labels has a record type of its kind with the classes of its two labels, and let its identities hold with the residual zero. Then every labelled configuration $X$ in the piece of the certificate satisfies
+$$
+\sum_{i<j} \frac{1}{|x_i - x_j|^2} \;\geq\; \beta .
+$$
+\end{theorem}
+
+This is the theorem \lean{CAP.VR.energy\_ge} (\file{LeanCode/CAP/VR/Exact.lean}). Its proof is that of Theorem \ref{thm:vr} with the nonnegativity of the terms. The checkers are those of Section \ref{sec:s3n9vr} with one addition: in the kernel the polynomial $A(X^2)$ of a term is one number under one mask.
+
+\emph{The statement} (C7). The sharp certificate has $\nu = 25$ and the degree $12$. It has $6$ record types and $21$ identities with $6\,739$ columns and $2\,583$ terms of exact parts, in the modules \lean{I3C}, \lean{I3R0} to \lean{I3R5} and \lean{I3M} of the folder \file{Certificates/Sharp/}; the entries of its columns have at most $59$ bits. The kernel verifies that the polynomial of every identity is zero, and the bound of the certificate is $\tfrac{35}{2}$. The statement module \file{Certificates/Sharp/I3S.lean} contains the theorem
+\begin{center}
+\ttfamily\footnotesize
+\begin{tabular}{@{}l@{}}
+theorem energy \char123{}x : Fin 9 $\to$ EuclideanSpace $\R$ (Fin 4)\char125{} \\
+\quad \char123{}e f : EuclideanSpace $\R$ (Fin 4)\char125{} (h : CAP.VR.InPieceS par heads x e f) : \\
+\quad (35 : $\R$) / 2 $\leq$ $\sum$ i, $\sum$ j with i < j, 1 / $\|$x i - x j$\|$ \^{} 2
+\end{tabular}
+\end{center}
+
+\subsection{The contacts}\label{sec:s3n9contacts}
+
+The statement (C8) is the conclusion that the proof draws from the sharp certificate for the case of equality: a configuration of the piece with the energy $\tfrac{35}{2}$ has the inner products of the minimizer.
+
+Let an exact certificate with the bound $\beta$ be given, and let $X$ be a configuration of its piece with $E(X) \leq \beta$. The proof of Theorem \ref{thm:vrexact} is a chain of inequalities whose sum over the pairs is $\beta \leq E(X)$, so every inequality of the chain is an equality. In particular the minorant of every pair touches the function: $h = \nu f(t)$ at the data of the pair. By the identity (c) the side of the sums of squares of the minorant vanishes there. All its terms are nonnegative, so each of them vanishes. If the exact part of a weight $g$ contains a term $a \, \zeta^2$ with a number $a \geq 1$, then $g \, \zeta^2 = 0$ at this point.
+
+\begin{theorem}[Contacts]\label{thm:contacts}
+Let an exact certificate satisfy the hypotheses of Theorem \ref{thm:vrexact}. Let $m$, or $(m_1, m_2)$, denote the variables of a minorant, and let the exact parts of the minorants contain the following terms $a \, \zeta^2$ with numbers $a \geq 1$.
+\begin{enumerate}
+    \item[(i)] For the two points of a pair: the weight $t - t^-$ has a term with $\zeta = 1$.
+    \item[(ii)] For a point of each pair: the weights $t - t^-$ and $t^+ - t$ have a term with $\zeta = m$, and $t^- < t^+$.
+    \item[(iii)] For a point of a pair and a ring point: the weight $1$ has a term with $\zeta = m_2$ and a term with $\zeta = m_1^2$.
+    \item[(iv)] For two ring points: the weights $t - t^-$ and $t^+ - t$ have a term with $\zeta = q_a m^2 - q_b$ for natural numbers $q_a$, $q_b$, and $t^- < t^+$.
+\end{enumerate}
+Let $X$ be a labelled configuration in the piece of the certificate with $\sum_{i<j} |x_i - x_j|^{-2} \leq \beta$. Then the inner product $t$ of a pair of labels satisfies $t = t^-$ in the case \textup{(i)} and $t = 0$ in the case \textup{(iii)}. In the cases \textup{(ii)} and \textup{(iv)} the variable $m$ of the minorant, of which $t$ is an affine function, satisfies $m = 0$ and $q_a m^2 = q_b$, respectively.
+\end{theorem}
+
+This is the theorem \lean{CAP.VR.contacts} (\file{LeanCode/CAP/VR/Contact.lean}); the conditions (i) to (iv) are the check \lean{CAP.VR.contactOk}, which the kernel evaluates on the exact parts of the six minorants. In the cases (ii) and (iv) the two weights do not vanish together, since $t^- < t^+$, so $\zeta$ vanishes. In the case (iii) the inner product is $m_1 + m_2 / 2^{m_S}$ with a shift $m_S$ of the record type. For two ring points the variable of the minorant is $m = t + \tfrac14$ and the term has $\zeta = 16 m^2 - 5 = 4 \, (4 t^2 + 2 t - 1)$. The statement module of the sharp certificate contains the theorem
+\begin{center}
+\ttfamily\footnotesize
+\begin{tabular}{@{}l@{}}
+theorem contacts \char123{}x : Fin 9 $\to$ EuclideanSpace $\R$ (Fin 4)\char125{} \\
+\quad \char123{}e f : EuclideanSpace $\R$ (Fin 4)\char125{} (h : CAP.VR.InPieceS par heads x e f) \\
+\quad (hE : $\sum$ i, $\sum$ j with i < j, 1 / $\|$x i - x j$\|$ \^{} 2 $\leq$ 35 / 2) : \\
+\quad inner $\R$ (x 0) (x 1) = -1 $\wedge$ inner $\R$ (x 2) (x 3) = -1 \\
+\quad $\wedge$ ($\forall$ i j : Fin 9, i < 2 $\to$ 2 $\leq$ j $\to$ j < 4 $\to$ inner $\R$ (x i) (x j) = 0) \\
+\quad $\wedge$ ($\forall$ i j : Fin 9, i < 4 $\to$ 4 $\leq$ j $\to$ inner $\R$ (x i) (x j) = 0) \\
+\quad $\wedge$ ($\forall$ i j : Fin 9, 4 $\leq$ i $\to$ i < j $\to$ \\
+\quad \quad 4 * inner $\R$ (x i) (x j) \^{} 2 + 2 * inner $\R$ (x i) (x j) - 1 = 0)
+\end{tabular}
+\end{center}
+The labels $0, 1$ are the points of the first pair, $2, 3$ those of the second pair, and $4, \dots, 8$ the ring points. The roots of $4 t^2 + 2 t - 1$ are $\cos 72^\circ$ and $\cos 144^\circ$, the inner products of the vertices of a regular pentagon. We call the five equations of this theorem the \emph{contacts} of a labelled configuration.
+
+\section{The analytic arguments}\label{sec:analytic}
+
+The statements (C1) to (C8) concern data. The proof applies them to configurations: it shows that every configuration $x$ of nine distinct points of $\Sph^3$ with $E(x) \leq \tfrac{35}{2}$ has a labelling in the claim or in the piece of a certificate, and it determines the configurations with $E(x) = \tfrac{35}{2}$. Table \ref{tab:s3n9an} lists the analytic statements in the order of the proof, with the theorems of Lean that contain them (namespace \lean{S3N9}, folder \file{LeanCode/S3N9/}). The subsections of this section contain the arguments.
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{@{}lp{0.55\textwidth}p{0.31\textwidth}@{}}
+\toprule
+ & analytic statement & Lean \\
+\midrule
+(A1) & $C^*$ consists of nine distinct points of $\Sph^3$, and $E(C^*) = \tfrac{35}{2}$ & \lean{energy\_Cstar} \\
+(A2) & the energy in coordinates is the energy of points of Euclidean space, and it does not depend on the labelling & \lean{energy\_eq}, \newline \lean{energyE\_comp\_perm} \\
+(A3) & the near pairs of a separated configuration are disjoint; a labelling that orders them & \lean{near\_disjoint}, \newline \lean{exists\_chain}, \lean{chain\_far} \\
+(A4) & a separated configuration outside the last cell and outside the first cell has a labelling in a claim of one of the other cells & \lean{pairClaim\_of\_chain}, \newline \lean{cells54} \\
+(A5) & a labelling in a claim of the library satisfies the hypothesis of the theorem of a certificate & \lean{excl\_of\_cert}, \newline \lean{exclSel\_of\_cert}, \newline module \lean{T8A} \\
+(A6) & the last cell before its core: the ring split, the tilt, the selected edges & \lean{l3k2\_outer\_energy} \\
+(A7) & the Gram--Schmidt frame and the cell lemma: a configuration of a leaf lies in the piece of its certificate & \lean{frameData}, \newline \lean{inPieceS\_of\_leaf} \\
+(A8) & the core of the last cell: the heights, a top point, the cover by the leaves & \lean{core\_cover}, \newline \lean{l3k2\_energy} \\
+(A9) & the inner piece: $E \geq \tfrac{35}{2}$, and the contacts in the case of equality & \lean{T8A.innerOK} \\
+(A10) & rigidity: a configuration with the contacts arises from $C^*$ by an orthogonal map and a relabelling & \lean{congruent\_of\_contacts} \\
+(A11) & the assembly & \lean{lower\_and\_contacts}, \newline \lean{T8A.harmonic9} \\
+\bottomrule
+\end{tabular}
+\medskip
+\caption{The analytic statements of the proof of Theorem \ref{thm:harmonic9}.}\label{tab:s3n9an}
+\end{table}
+
+Throughout, a \emph{labelled configuration} is a family $y = (y_0, \dots, y_8)$ of nine points of $\R^4$, indexed by the \emph{positions} $0, \dots, 8$, and a \emph{labelling} of a configuration $x$ is a labelled configuration $y = x \circ \sigma$ for a bijection $\sigma$ from the positions onto the indices of $x$. We write $\theta = -\tfrac{9}{10}$.
+
+\subsection{The configuration \texorpdfstring{$C^*$}{C*} and the two forms of the energy}
+
+\emph{The configuration} (A1). Two vertices of the pentagon whose indices differ by $d$ have the inner product $\cos \tfrac{2 \pi d}{5}$, which is $c_+ = \cos 72^\circ = \tfrac{\sqrt5 - 1}{4}$ for $d \in \{1, 4\}$ and $c_- = \cos 144^\circ = -\tfrac{\sqrt5 + 1}{4}$ for $d \in \{2, 3\}$. Both values follow from $\cos \tfrac{\pi}{5} = \tfrac{1 + \sqrt5}{4}$, a theorem of Mathlib. Hence the $36$ squared distances of $C^*$ are $2 - 2 c_+$ and $2 - 2 c_-$, each for five pairs of vertices of the pentagon, $4$ for the two antipodal pairs of the square, and $2$ for the other $24$ pairs. They are positive, so the points are distinct. Since $f(c_+) + f(c_-) = 1$, the pentagon contributes $5$ to the energy, the $20$ pairs of a vertex of the pentagon and a vertex of the square contribute $20 \cdot \tfrac12$, and the square contributes $4 \cdot \tfrac12 + 2 \cdot \tfrac14$. Hence $E(C^*) = 5 + 10 + \tfrac52 = \tfrac{35}{2}$ (\lean{onSphere\_Cstar}, \lean{injective\_Cstar}, \lean{energy\_Cstar}).
+
+\emph{Two forms} (A2). The proposition \lean{S3N9.Harmonic9} describes a configuration by its coordinates, a function \lean{Fin 9 $\to$ Fin 4 $\to$ $\R$}, and an orthogonal map by its matrix. The theorems of the certificates use points of the Euclidean space $\R^4$ with its norm and inner product. The two forms of the hypotheses and of the energy agree (\lean{onSphere\_iff}, \lean{injective\_pt}, \lean{energy\_eq}). The energy does not depend on the labelling: the sum of a symmetric function over the pairs $i < j$ is half its sum over all ordered pairs of distinct indices, and this sum does not change under a permutation of the indices (\lean{energyE\_comp\_perm}).
+
+\subsection{Near pairs and chains}\label{sec:chains}
+
+A configuration of points of $\Sph^3$ is \emph{separated} if $t_{ij} < T$ for all $i \neq j$. By Theorem \ref{thm:separation} a configuration of distinct points with $E \leq \tfrac{35}{2}$ is separated. A pair $\{i, j\}$ of points is \emph{near} if $t_{ij} \leq \theta$.
+
+\begin{lemma}[The near pairs are disjoint]\label{lma:matching}
+In a separated configuration of points of $\Sph^3$ no point belongs to two near pairs.
+\end{lemma}
+
+Indeed, if $t_{ij} \leq \theta$ and $t_{il} \leq \theta$ with $j \neq l$, then
+$$
+0 \leq |x_j + 2 x_i + x_l|^2 = 6 + 4 t_{ij} + 4 t_{il} + 2 t_{jl} \leq -\tfrac{6}{5} + 2 t_{jl},
+$$
+so that $t_{jl} \geq \tfrac35 > T$. This is the theorem \lean{near\_disjoint}. Hence a separated configuration has at most four near pairs.
+
+\emph{Chains} (A3). We order the pairs of a configuration by a labelling. A labelled configuration $y$ is a \emph{chain} if, for $c = 0, 1, 2, 3$, the pair of the positions $2c$ and $2c + 1$ has the smallest inner product among all pairs of distinct positions from $2c$ on. We write
+$$
+m_c = \langle y_{2c}, y_{2c+1} \rangle, \qquad c = 0, 1, 2, 3,
+$$
+for the inner products of the first four pairs of a labelled configuration. For a chain, $m_0 \leq m_1 \leq m_2 \leq m_3$, and $m_0$ is the smallest inner product of two distinct points. Every configuration has a labelling that is a chain (\lean{exists\_chain}): the pairs are chosen one after the other, each with the smallest inner product among the points that are left. No rule for ties is needed.
+
+\begin{lemma}[The near pairs of a chain]\label{lma:kchar}
+Let $y$ be a chain that is a separated configuration of points of $\Sph^3$, and let $0 \leq k \leq 4$ be such that $m_c \leq \theta$ for all $c < k$, and $m_k > \theta$ if $k < 4$. Then the near pairs of $y$ are the first $k$ pairs of the chain: every other pair of distinct positions has an inner product above $\theta$.
+\end{lemma}
+
+For the proof let $\{p, q\}$ be a pair of positions that is not one of the first $k$ pairs. If $p < 2k$, then $p$ belongs to one of the first $k$ pairs, which is near, and the pair $\{p, q\}$ is not near by Lemma \ref{lma:matching}. The same holds if $q < 2k$. Otherwise both positions are at least $2k$. Then $k < 4$, and $\langle y_p, y_q \rangle \geq m_k > \theta$ since $y$ is a chain. This is the theorem \lean{chain\_far}. We call $k$ the \emph{number of near pairs} of the chain.
+
+\subsection{The cells and their claims}\label{sec:cells}
+
+\emph{Pair claims.} Let $0 \leq p \leq 4$, let $I_0, \dots, I_{p-1}$ be intervals and let $\ell \in \R$. The positions are divided into $p + 1$ classes: the $p$ pairs $\{2c, 2c+1\}$ with $c < p$, and the class of the positions from $2p$ on. The \emph{pair claim} $P(I_0, \dots, I_{p-1}; \ell)$ consists of the labelled configurations $y$ of points of $\Sph^3$ such that
+\begin{itemize}
+    \item $m_c \in I_c$ for all $c < p$;
+    \item $\langle y_m, y_n \rangle \geq \ell$ for all distinct positions $m, n \geq 2p$;
+    \item $\langle y_m, y_n \rangle \geq \theta$ for all positions $m$, $n$ of different classes;
+    \item $\langle y_m, y_n \rangle \leq T$ for all distinct positions $m$, $n$.
+\end{itemize}
+In Lean this is the structure \lean{InPairClaim}. A pair claim is a claim in the sense of Section \ref{sec:s3n9claims}, with $p$ classes of two points and one class of $9 - 2p$ points.
+
+\begin{lemma}[A chain lies in a pair claim]\label{lma:pairclaim}
+Let $y$ be a chain that is a separated configuration of points of $\Sph^3$, with $k$ near pairs in the sense of Lemma \ref{lma:kchar}. Let $k \leq p \leq 4$, let $m_c \in I_c$ for all $c < p$, and let $\ell \leq m_p$ if $p < 4$. Then $y$ lies in the pair claim $P(I_0, \dots, I_{p-1}; \ell)$.
+\end{lemma}
+
+The first condition of the claim is a hypothesis. Two distinct positions from $2p$ on have an inner product of at least $m_p \geq \ell$, since $y$ is a chain. Two positions of different classes do not form one of the first $k$ pairs of the chain, so their inner product exceeds $\theta$ by Lemma \ref{lma:kchar}. The last condition holds since $y$ is separated. This is the theorem \lean{pairClaim\_of\_chain}. All cover lemmas of the proof are instances of it.
+
+\emph{The cells.} Let
+$$
+a_1 = -\tfrac{99}{100}, \quad a_0 = -\tfrac{361}{400}, \quad b_0 = -\tfrac78, \quad \kappa_2 = -\tfrac{43}{50}, \quad \kappa = -\tfrac45, \quad \varsigma = -\tfrac{17}{20},
+$$
+and let $\xi = (-\tfrac{99}{100}, -\tfrac{49}{50}, -\tfrac{97}{100}, -\tfrac{24}{25}, -\tfrac{19}{20}, -\tfrac{47}{50}, -\tfrac{23}{25})$. The \emph{slab} $j$ of the \emph{first grid} is the interval $[\xi_j, \xi_{j+1}]$ for $j = 0, \dots, 5$ and $[\xi_6, a_0]$ for $j = 6$. The slabs of the \emph{second grid} are the same intervals with $\theta$ in the place of $a_0$. The separated chains are divided into $55$ cells by the numbers $m_0 \leq m_1 \leq m_2 \leq m_3$ and by the number $k$ of near pairs. For $I$, $I'$ and a chain with at most two near pairs and $m_2 > \theta$, the \emph{ring cover} with $I$ and $I'$ consists of the three claims
+\begin{align*}
+& P(I, I'; \kappa) && \text{if } m_2 \geq \kappa, \\
+& P(I, I', [\theta, \kappa]; \kappa) && \text{if } m_2 < \kappa \leq m_3, \\
+& P(I, I', [\theta, \kappa], [\theta, \kappa]; \theta) && \text{otherwise.}
+\end{align*}
+The cells and their claims are the following; $[l, h]$ denotes the slab $j$.
+\begin{itemize}
+    \item \emph{The first cell} \textup{L0}: $m_0 \geq a_0$. All inner products of distinct points are at least $a_0$. This is the claim of the certificate of (C4), with one class of nine points.
+    \item \textup{L1-0$j$-k1}: $m_0$ lies in the slab $j$ of the first grid, and $k = 1$. The claims are $P([l,h]; b_0)$ if $m_1 \geq b_0$; otherwise, for $j \leq 4$, $P([l,h],\allowbreak[\theta,b_0]; \kappa_2)$ if $m_2 \geq \kappa_2$ and $P([l,h],\allowbreak[\theta,b_0],\allowbreak[\theta,\kappa_2]; \theta)$ if not, and for $j \geq 5$ the claim $P([l,h],\allowbreak[\theta,b_0]; \theta)$.
+    \item \textup{L1-0$j$-k2}: the same slab, and $k = 2$. For $j \leq 2$ the ring cover with $I = [l,h]$ and $I' = [l,\theta]$, where for $j = 0$ the third claim is divided into three claims with $I' = [-\tfrac{99}{100}, -\tfrac{49}{50}]$, $[-\tfrac{49}{50}, -\tfrac{19}{20}]$ and $[-\tfrac{19}{20}, \theta]$. For $3 \leq j \leq 5$ the claims $P([l,h],\allowbreak[l,\theta]; \kappa_2)$ if $m_2 \geq \kappa_2$ and $P([l,h],\allowbreak[l,\theta],\allowbreak[\theta,\kappa_2]; \theta)$ if not. For $j = 6$ the claim $P([l,h],\allowbreak[l,\theta]; \theta)$.
+    \item \textup{L1-0$j$-k3}: the same slab, and $k = 3$. For $j \leq 5$ the claims $P([l,h],\allowbreak[r_i,r_{i+1}],\allowbreak[r_i,\theta]; \theta)$ with $m_1 \in [r_i, r_{i+1}]$, for a grid $r$ from $l$ to $\theta$: the points $\xi_j, \dots, \xi_6, \theta$, and for $j = 2$ the points $\xi_2, \xi_3, \xi_5, \xi_6, \theta$. For $j = 6$ the claim $P([l,h],\allowbreak[l,\theta],\allowbreak[l,\theta]; \theta)$.
+    \item \textup{L1-0$j$-k4}: the same slab, and $k = 4$. The claim $P([l,h],\allowbreak[l,\theta],\allowbreak[l,\theta],\allowbreak[l,\theta]; \theta)$.
+    \item \textup{L2H}: $m_0 \leq a_1$ and $m_1 \geq b_0$. The claim $P([-1,a_1]; b_0)$.
+    \item \textup{L2U-k1}: $m_0 \leq a_1$ and $\theta < m_1 \leq b_0$. The ring cover with $I = [-1,a_1]$ and $I' = [\theta,b_0]$.
+    \item \textup{L2-0$j$-k2}: $m_0 \leq a_1$, $m_1$ lies in the slab $j$ of the second grid, and $k = 2$. The ring cover with $I = [-1,a_1]$ and $I' = [l,h]$; for $j = 0$ its third claim is replaced by $P(I,I',[\theta,\varsigma],\allowbreak[\theta,\kappa]; \theta)$ if $m_2 \leq \varsigma$ and by $P(I,I',[\varsigma,\kappa],\allowbreak[\varsigma,\kappa]; \theta)$ if not.
+    \item \textup{L2-0$j$-k3} and \textup{L2-0$j$-k4}: the same, with $k = 3$ and $k = 4$. The claims $P([-1,a_1],\allowbreak[l,h],\allowbreak[l,\theta]; \theta)$ and $P([-1,a_1],\allowbreak[l,h],\allowbreak[l,\theta],\allowbreak[l,\theta]; \theta)$.
+    \item \textup{L3-k3} and \textup{L3-k4}: $m_0, m_1 \leq a_1$, and $k = 3$ or $k = 4$. The claims $P([-1,a_1],\allowbreak[-1,a_1],\allowbreak[-1,\theta]; \theta)$ and $P([-1,a_1],\allowbreak[-1,a_1],\allowbreak[-1,\theta],\allowbreak[-1,\theta]; \theta)$.
+    \item \emph{The last cell} \textup{L3-k2}: $m_0, m_1 \leq a_1$ and $m_2 > \theta$. It is the subject of Sections \ref{sec:outer} to \ref{sec:core}.
+\end{itemize}
+The cells other than the first and the last have $113$ pair claims. In Lean they are the list \lean{claims54} of the file \file{LeanCode/S3N9/Cells.lean}; a claim is stored by the numerators of its bounds, which are multiples of $\tfrac{1}{2000}$.
+
+\begin{theorem}[The $54$ cells, (A4)]\label{thm:cells54}
+Let $y$ be a chain that is a separated configuration of points of $\Sph^3$. Then $m_0 \leq a_1$, $m_1 \leq a_1$ and $m_2 > \theta$, or $m_0 \geq a_0$, or $y$ lies in one of the $113$ pair claims of the list \lean{claims54}.
+\end{theorem}
+
+This is the theorem \lean{cells54} (\file{LeanCode/S3N9/Cells54.lean}). The proof is a case distinction on the numbers $m_c$. Let $m_0 < a_0$. If $m_0 \geq a_1$, then $m_0$ lies in a slab of the first grid, the first pair is near since $a_0 < \theta$, and the number $k \geq 1$ of near pairs and the conditions of the list select a claim. If $m_0 < a_1$, then $m_1 \geq b_0$, or $\theta < m_1 < b_0$, or $a_1 < m_1 \leq \theta$, in which case $m_1$ lies in a slab of the second grid, or $m_1 \leq a_1$; in the last case $m_2 > \theta$ is the last cell, and $m_2 \leq \theta$ gives the cells \textup{L3-k3} and \textup{L3-k4}. In every case Lemma \ref{lma:pairclaim} shows that $y$ lies in the claim: the intervals of the claim contain the numbers $m_c$ with $c < p$ by the conditions of the case and since $m_0 \leq m_1 \leq m_2 \leq m_3$, and the bound $\ell$ is at most $m_p$.
+
+\subsection{From the claims of the library to the certificates}\label{sec:fit}
+
+The theorems of the certificates need the modules of the certificates. The analytic statements are proved in the library, for data of the library: the pair claims of Section \ref{sec:cells}, the selected-edge claims of Section \ref{sec:outer}, and the leaves of Section \ref{sec:core}. For each of the three kinds the library defines the labelled configurations of a claim, and a proposition which states that the energy exceeds $\tfrac{35}{2}$ on every claim of a list. The analytic statements have six such propositions as hypotheses:
+\begin{itemize}
+    \item \lean{Excl claims54} and \lean{ExclL0}: the $113$ pair claims of the cells, and the first cell;
+    \item \lean{Excl claimsRing} and \lean{ExclSel claimsSel}: the two pair claims and the four selected-edge claims of the last cell (Section \ref{sec:outer});
+    \item \lean{ExclLeaves leavesVR}: the eleven leaves of the core of the last cell (Section \ref{sec:core});
+    \item \lean{InnerOK}: on the inner piece the energy is at least $\tfrac{35}{2}$, and a configuration of the inner piece with $E \leq \tfrac{35}{2}$ has the contacts.
+\end{itemize}
+
+The module \file{Certificates/Theorem/T8A.lean} proves the six propositions (A5). For every claim of the library it names a claim of a certificate and applies the theorem of this certificate. The step between the two is a comparison of numbers. For a pair claim and for a selected-edge claim, the classes agree and the intervals of the certificate contain those of the library (\lean{pcFits}, \lean{oneFits}, \lean{scFits}). For a leaf, the constants of the certificate dominate those of the cell, its record intervals contain those of the leaf, and its guards are those of the leaf (\lean{fitsLeaf}). These comparisons are decidable propositions about integers and rational numbers, and the kernel decides them on the data of the certificate. A theorem of soundness, proved once in the library for each kind, turns the comparison into the hypothesis of the theorem of the certificate (\lean{excl\_of\_cert}, \lean{exclL0\_of\_cert}, \lean{exclSel\_of\_cert}, \lean{exclLeaf\_of\_cert}, \lean{innerOK\_of\_cert}). For a pair claim this theorem is \lean{inClaim\_of\_pairClaim}: a labelled configuration in a pair claim satisfies the claim of a typed certificate with $p + 1$ classes of the sizes $2, \dots, 2, 9 - 2p$ whose intervals contain $I_c$ for the pairs, $[\ell, T]$ for the last class and $[\theta, T]$ for two different classes.
+
+The $115$ pair claims, the $4$ selected-edge claims and the claim of the first cell use all $120$ claims of the $111$ certificates of (C2) to (C4). The $11$ leaves and the inner piece use the virtual-root certificates of (C6) and the sharp certificate of (C7) and (C8).
+
+\subsection{The last cell before its core}\label{sec:outer}
+
+Let $y$ be a chain that is a separated configuration of points of $\Sph^3$ and lies in the last cell: $m_0 \leq a_1$, $m_1 \leq a_1$ and $m_2 > \theta$. By Lemma \ref{lma:kchar} it has exactly two near pairs. We call the pairs of the positions $(0,1)$, $(2,3)$, $(4,5)$ and $(6,7)$ the pairs $A$, $B$, $C$ and $D$, and we write $t_A = m_0$ and $t_B = m_1$. The points at the positions $0, 1, 2, 3$ are $a, a', b, b'$, the points at the positions $4, \dots, 8$ are the \emph{ring points}, and the last of them is $x$.
+
+\emph{The ring split.} The pair claims \emph{main} and \emph{aux1} are
+$$
+P\big([-1,a_1],[-1,a_1]; -\tfrac34\big) \qquad \text{and} \qquad P\big([-1,a_1],[-1,a_1],[\theta,-\tfrac34]; -\tfrac34\big) .
+$$
+They form the list \lean{claimsRing}. If $m_2 \geq -\tfrac34$, then $y$ lies in the claim main by Lemma \ref{lma:pairclaim}. If $m_2 < -\tfrac34 \leq m_3$, then $y$ lies in the claim aux1. Otherwise $m_2, m_3 < -\tfrac34$, and $y$ lies in the claim \emph{aux2}: a labelled configuration of points of $\Sph^3$ lies in aux2 if it is separated, the pairs $A$ and $B$ have inner products of at most $a_1$, the pairs $C$ and $D$ have inner products of at most $-\tfrac34$, and every pair of points other than $A$ and $B$ has an inner product above $\theta$. This is the theorem \lean{ring\_split}, with the structure \lean{Aux2}.
+
+The claim aux2 does not refer to the chain. It is invariant under every relabelling that maps pairs to pairs and the pairs $A$, $B$ to $A$, $B$ (\lean{Aux2.comp}). The exchange of $A$ and $B$ is such a relabelling. Hence a configuration in aux2 has a labelling in aux2 with $t_B \leq t_A$ (\lean{exists\_bent}).
+
+\emph{Selected edges.} Let $c_{\mathrm{in}} = -\tfrac{997}{1000}$. For intervals $J_A$, $J_B$, $J_e$ the \emph{selected-edge claim} consists of the labelled configurations in aux2 with $t_A \in J_A$, $t_B \in J_B$ and $\langle a, b \rangle \in J_e$. The proof uses four of them, the list \lean{claimsSel}:
+$$
+\begin{array}{llll}
+\text{Q2+in:} & J_A = J_B = [-1, c_{\mathrm{in}}], & & J_e = [\tfrac{1}{10}, T]; \\[2pt]
+\text{Q2$-$in:} & J_A = J_B = [-1, c_{\mathrm{in}}], & & J_e = [\theta, -\tfrac{1}{10}]; \\[2pt]
+\text{Q1At30+:} & J_A = [c_{\mathrm{in}}, a_1], & J_B = [-1, a_1], & J_e = [\tfrac{3}{10}, T]; \\[2pt]
+\text{Q1At30$-$:} & J_A = [c_{\mathrm{in}}, a_1], & J_B = [-1, a_1], & J_e = [\theta, -\tfrac{3}{10}].
+\end{array}
+$$
+A selected-edge claim is a claim in the sense of Section \ref{sec:s3n9claims} with the seven classes $\{a\}$, $\{a'\}$, $\{b\}$, $\{b'\}$, $C$, $D$, $\{x\}$ (\lean{inClaim\_of\_SC}).
+
+\begin{lemma}[The selected edge]\label{lma:seledge}
+Let $y$ lie in aux2 with $t_A \in J_A$ and $t_B \in J_B$, and let the inner product of a point of $A$ and a point of $B$ be at least $d > 0$ in absolute value. Then a relabelling of $y$ lies in the selected-edge claim with $J_e = [d, T]$ or in the one with $J_e = [\theta, -d]$.
+\end{lemma}
+
+A relabelling inside the pairs $A$ and $B$ moves the two points to the positions of $a$ and $b$. It respects the pairs, so the relabelled configuration lies in aux2, with the same $t_A$ and $t_B$. The inner product $\langle a, b \rangle$ is above $\theta$ and below $T$, and it is at least $d$ in absolute value. This is the theorem \lean{sel\_of\_tilt}.
+
+\emph{The core.} A labelled configuration lies in the \emph{core} if it lies in aux2, if $t_B \leq t_A$, and if the four inner products between a point of $A$ and a point of $B$ are at most $\tfrac{3}{10}$ in absolute value. Let $y$ lie in aux2 with $t_B \leq t_A$, and suppose that $y$ does not lie in the core. Then an inner product between $A$ and $B$ exceeds $\tfrac{3}{10}$ in absolute value. If $t_A \leq c_{\mathrm{in}}$, then also $t_B \leq c_{\mathrm{in}}$, and Lemma \ref{lma:seledge} with $d = \tfrac{1}{10}$ gives a relabelling in Q2+in or in Q2$-$in. If $t_A > c_{\mathrm{in}}$, then Lemma \ref{lma:seledge} with $d = \tfrac{3}{10}$ gives a relabelling in Q1At30+ or in Q1At30$-$. This is the theorem \lean{sel\_or\_core}. Together with the ring split we obtain (A6), the theorem \lean{l3k2\_outer\_energy}: if the energy exceeds $\tfrac{35}{2}$ on the two pair claims of the ring split and on the four selected-edge claims, then $E(y) > \tfrac{35}{2}$, or a relabelling of $y$ lies in the core.
+
+\subsection{The Gram--Schmidt frame and the cell lemma}\label{sec:frame}
+
+\emph{A pair.} For unit vectors $p$, $p'$ with $\langle p, p' \rangle < 1$ let $r = \sqrt{(1 - \langle p, p' \rangle)/2}$ be half the length of $p - p'$, and let $d = (p - p')/(2r)$ be its direction. Then $d$ is a unit vector, $\langle p, d \rangle = r$ and $\langle p', d \rangle = -r$.
+
+\emph{The frame.} Let $y$ be a labelled configuration of points of $\Sph^3$ with $t_A, t_B < 1$. Let $r_A$, $r_B$ be the half lengths and $e$, $e_B$ the directions of the pairs $(a, a')$ and $(b, b')$. The \emph{tilt} is $s = \langle e, e_B \rangle$. If $s^2 < 1$, let $c = \sqrt{1 - s^2}$ and $f = (e_B - s \, e)/c$. Then $(e, f)$ is an orthonormal pair, the \emph{Gram--Schmidt frame} of $y$, and $e_B = s \, e + c f$. For a point $x$ of $y$ we write $u_x = \langle x, e \rangle$, $v_x = \langle x, f \rangle$ and $R_x = 1 - u_x^2 - v_x^2$ as in Section \ref{sec:s3n9vr}, and we call $u_x^2 + v_x^2$ the \emph{height} of $x$. The frame has the two properties that Theorem \ref{thm:vr} uses: $a - a' = 2 r_A \, e$ and $b - b' = 2 r_B \, (s \, e + c f)$. In coordinates,
+\begin{equation}\label{eq:frameid}
+u_a = r_A, \qquad u_{a'} = -r_A, \qquad v_a = v_{a'}, \qquad s \, u_b + c \, v_b = r_B, \qquad s \, u_{b'} + c \, v_{b'} = -r_B .
+\end{equation}
+By Bessel's inequality $u_x^2 + v_x^2 \leq 1$ for every unit vector $x$, and by the inequality of Cauchy and Schwarz for the parts of two unit vectors that are orthogonal to the frame,
+\begin{equation}\label{eq:framecs}
+\big( \langle x, x' \rangle - u_x u_{x'} - v_x v_{x'} \big)^2 \leq R_x \, R_{x'} .
+\end{equation}
+
+\emph{Cells.} A labelled configuration $y$ of points of $\Sph^3$ lies in the \emph{Gram--Schmidt cell} with the constants of Section \ref{sec:s3n9cells} if $t_A \leq -c_A$, $t_B \leq -c_B$, if the four inner products between a point of $A$ and a point of $B$ are at most $\delta$ in absolute value, and if the inner product of a point of $A$ or $B$ and a ring point is at most $T$ (\lean{InCell}).
+
+\begin{lemma}[The cell lemma, (A7)]\label{lma:gscell}
+Let the constants of a cell satisfy the conditions \textup{(V1)} to \textup{(V5)}, with $0 < c_A = c_B \leq 1$ and $\bar\sigma, T, \varepsilon_R \geq 0$, and let $y$ lie in the cell. Then the Gram--Schmidt frame of $y$ is defined, $|s| \leq \bar\sigma$, and the following holds, with $\epsilon = 1$ for the points $a$, $b$ and $\epsilon = -1$ for the points $a'$, $b'$.
+\begin{enumerate}
+    \item[(i)] For a point of $A$ with the coordinates $(u, v)$: $0 \leq 1 - \epsilon u \leq \varepsilon_{AP}$, $v^2 \leq \varepsilon_{AQ}^2$, $0 \leq R \leq \eta_A$, $v^2 \leq \kappa_A^2 u^2$ and $1 - u^2 \leq \eta_A$.
+    \item[(ii)] For a point of $B$ with the coordinates $(u, v)$: $0 \leq 1 - \epsilon v \leq \varepsilon_{BP}$, $u^2 \leq \varepsilon_{BQ}^2$, $0 \leq R \leq \eta_B$, $u^2 \leq \kappa_B^2 v^2$ and $u^2 \leq \tfrac{12}{5} \bar\sigma^2 + \tfrac{12}{7} (\eta_B - R)$. Moreover $(u_b - u_{b'})^2 \leq \kappa_\theta^2 \, (v_b - v_{b'})^2$.
+    \item[(iii)] For a ring point with the coordinates $(u, v)$: $u^2 \leq \varepsilon_R^2$, $v^2 \leq \varepsilon_R^2$ and $R \geq 0$.
+    \item[(iv)] For the inner product $t$ of two points, the deviations satisfy $(t - \epsilon_\beta v_\alpha - \epsilon_\alpha u_\beta)^2 \leq \sigma_{AB}^2$ for a point $\alpha$ of $A$ and a point $\beta$ of $B$, $(t - \epsilon_\alpha u_y)^2 \leq \sigma_{AR}^2$ for a point $\alpha$ of $A$ and a ring point $y$, and $(t - \epsilon_\beta v_y)^2 \leq \sigma_{BR}^2$ for a point $\beta$ of $B$ and a ring point $y$.
+\end{enumerate}
+\end{lemma}
+
+In Lean these are the theorems \lean{frameData}, \lean{aPt\_zero}, \lean{aPt\_one}, \lean{bPt\_two}, \lean{bPt\_three}, \lean{rPt}, \lean{cell\_dir}, \lean{devAB}, \lean{devAR} and \lean{devBR} (\file{LeanCode/S3N9/CellLemma.lean}, \file{LeanCode/S3N9/CellAlgebra.lean}). The proof derives the bounds from the conditions by algebra; no angle occurs.
+
+\emph{The frame and the tilt.} We have $r_A^2 = (1 - t_A)/2 \geq (1 + c_A)/2 = 1 - \eta_A$, and in the same way $r_B^2 \geq 1 - \eta_B$. The tilt is $s = \langle a - a', b - b' \rangle / (4 r_A r_B)$. Its numerator is a sum of four inner products between $A$ and $B$, so that $|s| \leq 4 \delta / (2 \sqrt{(1 + c_A)(1 + c_B)}) \leq \bar\sigma$ by (V1). Since $\bar\sigma^2 < 1$ by (V1), the frame is defined.
+
+\emph{The pair $A$.} By \eqref{eq:frameid}, $\epsilon u = r_A$, hence $1 - \epsilon u \leq 1 - \sqrt{1 - \eta_A} \leq \varepsilon_{AP}$ by (V2) and $1 - u^2 \leq \eta_A$. By Bessel's inequality $v^2 \leq 1 - u^2 \leq \eta_A \leq \varepsilon_{AQ}^2$ and $0 \leq R \leq \eta_A$, and $v^2 \leq \eta_A \leq \kappa_A^2 (1 - \eta_A) \leq \kappa_A^2 u^2$.
+
+\emph{The pair $B$.} Let $(u, v)$ be the coordinates of $b$; for $b'$ the signs change. By \eqref{eq:frameid}, $s u + c v = r_B$, and $u^2 + v^2 \leq 1$ by Bessel's inequality. With $\nu = c u - s v$ we have $r_B^2 + \nu^2 = u^2 + v^2$ and $v = c \, r_B - s \nu$. Since $\nu^2 \leq 1 - r_B^2 \leq \eta_B$ and $|s| \leq \bar\sigma$, this gives $v \geq c^*$ for the constant $c^*$ of the cell, and $u^2 \leq 1 - v^2 \leq 1 - (c^*)^2 = (s^*)^2$ by the identity $(c^*)^2 + (s^*)^2 = 1$. The first four bounds of (ii) now follow from (V3). The fifth one follows from $u = s \, r_B + c \, \nu$ and $\nu^2 \leq \eta_B - R$, with the inequality $(x + y)^2 \leq \tfrac{12}{5} x^2 + \tfrac{12}{7} y^2$. The inequality for the direction is $s^2 \leq \kappa_\theta^2 c^2$, since $u_b - u_{b'} = 2 r_B \, s$ and $v_b - v_{b'} = 2 r_B \, c$.
+
+\emph{The ring points.} Let $y$ be a ring point, and let $w_A = \langle y, e \rangle$ and $w_B = \langle y, e_B \rangle$ be its coordinates along the two pairs. The bound for these coordinates follows from one inequality in the plane: if $r U - m W \leq T$ for unit vectors $(r, m)$ and $(U, W)$ with nonnegative coordinates and $m \leq m_0$, then $U \leq r_0 T + m_0 \sqrt{1 - T^2}$ with $r_0 = \sqrt{1 - m_0^2}$ (\lean{cap\_core}). Its proof compares $(U, W)$ with the point at which equality holds. We apply it to a pair $(p, p')$ with the half length $r$ and the direction $d$. The two points of the pair have the same component orthogonal to $d$, of the length $m = \sqrt{1 - r^2} \leq \sqrt{\eta}$. Let $U = |\langle y, d \rangle|$, and let $W$ be the length of the component of $y$ orthogonal to $d$. The inequalities $\langle p, y \rangle \leq T$ and $\langle p', y \rangle \leq T$ give $r U - m W \leq T$. Hence
+$$
+|\langle y, d \rangle| \leq \sqrt{1 - \eta} \; T + \sqrt{\eta} \, \sqrt{1 - T^2} = \mathcal{H}
+$$
+for both pairs (\lean{abs\_inner\_dir\_le}), where (V4) provides $\eta + T^2 \leq 1$. Hence $|u_y| = |w_A| \leq \mathcal{H}$, and $v_y = (w_B - s \, u_y)/c$ gives $|v_y| \leq (1 + \bar\sigma) \mathcal{H} / \sqrt{1 - \bar\sigma^2} \leq \varepsilon_R$ by (V4). Since $\mathcal{H} \leq \varepsilon_R$ as well, (iii) follows.
+
+\emph{The deviations.} By \eqref{eq:framecs}, $t - u_x u_{x'} - v_x v_{x'}$ is at most $\sqrt{R_x R_{x'}}$ in absolute value. For a point $\alpha$ of $A$ and a ring point $y$, for example, $t - \epsilon_\alpha u_y = (t - u_\alpha u_y - v_\alpha v_y) - (\epsilon_\alpha - u_\alpha) \, u_y + v_\alpha v_y$, and the three terms are at most $\sqrt{\eta_A}$, $\varepsilon_{AP} \varepsilon_R$ and $\varepsilon_{AQ} \varepsilon_R$ in absolute value. The sum of these bounds is at most $\sigma_{AR}$ by (V5). The two other deviations are bounded in the same way.
+
+\emph{From a cell to a piece.} The piece of a virtual-root certificate is stated with constants of the certificate. They \emph{dominate} the constants of a cell if every weight of the certificate that belongs to a point or to a deviation is nonnegative for coordinates with the bounds of Lemma \ref{lma:gscell}; this is a list of inequalities between the two sets of constants (\lean{Dominates}). The weights $R_x R_{x'} - H^2$ and the Gram determinants of Section \ref{sec:s3n9vr} are nonnegative for every orthonormal frame; they are not conditions of a piece. Hence a labelled configuration in a cell, with its Gram--Schmidt frame, lies in the piece of a certificate whose constants dominate those of the cell, if its inner products lie in the intervals of the record types and the heights of its ring points satisfy the guards of the certificate (\lean{inPieceS\_of\_cell}).
+
+\subsection{The core and the inner piece}\label{sec:core}
+
+\emph{Leaves.} A \emph{leaf} of the core is given by a tilt bound $\delta \in \{\tfrac{1}{10}, \tfrac{3}{10}\}$, by the choice whether the pair $A$ is in the \emph{shell}, by a \emph{cap} $\bar h$ for the heights, and by a lower \emph{guard} $\underline h$ for the height of one ring point. A labelled configuration lies in the leaf if it lies in aux2, if the four inner products between $A$ and $B$ are at most $\delta$ in absolute value, if $t_A \geq c_{\mathrm{in}}$ in the case of the shell, if the heights of all ring points in its Gram--Schmidt frame are at most $\bar h$, and if the height of the named ring point is at least $\underline h$ (\lean{InLeaf}). The cell of the leaf has the caps $\tfrac{99}{100}$, the tilt bound $\delta$ and the constants of (C5) for this tilt bound. The proof uses twelve leaves. Let the \emph{bands} be the intervals
+$$
+[\tfrac{3}{100}, \tfrac{6}{100}], \quad [\tfrac{6}{100}, \tfrac{9}{100}], \quad [\tfrac{9}{100}, \tfrac{27}{200}], \quad [\tfrac{27}{200}, \tfrac15], \quad [\tfrac{3}{20}, 1] .
+$$
+\begin{itemize}
+    \item The \emph{inner piece} \textup{I}: $\delta = \tfrac{1}{10}$, no shell, $\bar h = \tfrac{3}{100}$, no lower guard.
+    \item \textup{QW0}: $\delta = \tfrac{3}{10}$, the shell, $\bar h = \tfrac{3}{100}$, no lower guard.
+    \item \textup{WX$j$}, $j = 1, \dots, 5$: $\delta = \tfrac{3}{10}$, no shell, and the height of the point $x$ is at least the lower end of the band $j$, whose upper end is $\bar h$.
+    \item \textup{WY$j$}, $j = 1, \dots, 5$: the same with the first point of the pair $C$ in the place of $x$.
+\end{itemize}
+The eleven leaves other than \textup{I} form the list \lean{leavesVR}.
+
+\emph{A leaf in the piece of its certificate.} A labelled configuration $y$ in a leaf lies in the cell of the leaf: the caps and the tilt bound are conditions of aux2 and of the leaf, and the inner products between a point of $A$ or $B$ and a ring point are below $T$ since $y$ is separated. These inner products are also bounded from below. If $p$, $q$, $y$ are unit vectors with $\langle p, q \rangle \leq -c$ and $\langle q, y \rangle \leq T$, where $0 \leq T \leq c$, then $\langle p, y \rangle \geq L(c)$ for the cap bound \eqref{eq:capbound} (\lean{inner\_ge\_cap}). With $c = \tfrac{99}{100}$ and \eqref{eq:lstar} we obtain $\langle \alpha, y \rangle \in [L^*, T]$ for every point $\alpha$ of $A$ or $B$ and every ring point $y$. The other inner products of $y$ lie in $[-1, a_1]$, or in $[c_{\mathrm{in}}, a_1]$ in the case of the shell, for the pair $A$, in $[-1, a_1]$ for the pair $B$, in $[-\delta, \delta]$ between $A$ and $B$, in $[\theta, -\tfrac34]$ for the pairs $C$ and $D$, and in $[\theta, T]$ for two ring points. These are the \emph{intervals of the leaf}; for the inner piece the interval of the pairs $C$ and $D$ is $[\theta, T]$ as well. A certificate \emph{fits} a leaf if its constants dominate those of the cell of the leaf, if its record intervals contain the intervals of the leaf, and if its guards follow from the cap and the guard of the leaf (\lean{fitsLeaf}). By Lemma \ref{lma:gscell} and the last paragraph of Section \ref{sec:frame}, a labelled configuration in a leaf lies in the piece of a certificate that fits the leaf, with its Gram--Schmidt frame (\lean{inPieceS\_of\_leaf}).
+
+\begin{theorem}[The cover of the core, (A8)]\label{thm:core}
+A labelled configuration in the core has a relabelling in one of the selected-edge claims \textup{Q2+in} and \textup{Q2$-$in}, in one of the eleven leaves of the list \lean{leavesVR}, or in the inner piece \textup{I}.
+\end{theorem}
+
+This is the theorem \lean{core\_cover}. A configuration $y$ of the core lies in the cell with the tilt bound $\tfrac{3}{10}$, so that its frame is defined, and its heights are at most $1$. Let $M$ be the largest height of the ring points, and let a \emph{top point} be a ring point with this height. Suppose first that $M \leq \tfrac{3}{100}$. If the four inner products between $A$ and $B$ are at most $\tfrac{1}{10}$ in absolute value, then $y$ lies in the inner piece. Otherwise, if $t_A \leq c_{\mathrm{in}}$, then $t_B \leq t_A \leq c_{\mathrm{in}}$, and Lemma \ref{lma:seledge} with $d = \tfrac{1}{10}$ gives a relabelling in Q2+in or in Q2$-$in; if $t_A > c_{\mathrm{in}}$, then $y$ lies in the leaf QW0. Suppose now that $M > \tfrac{3}{100}$. Then $M$ lies in a band $j$. If $x$ is a top point, then $y$ lies in the leaf WX$j$. Otherwise a top point belongs to $C$ or to $D$. A relabelling of the ring points that respects the pairs and fixes the points of $A$ and $B$ moves it to the first position of $C$. It does not change the frame and the heights, so the relabelled configuration lies in the leaf WY$j$.
+
+\emph{The inner piece} (A9). The sharp certificate fits the leaf I. Hence Theorem \ref{thm:vrexact} and Theorem \ref{thm:contacts}, in the form of the statements (C7) and (C8), give the proposition \lean{InnerOK}: a labelled configuration in the inner piece has $E \geq \tfrac{35}{2}$, and if $E \leq \tfrac{35}{2}$, then it has the contacts. In the same way the theorems of (C6) give \lean{ExclLeaves leavesVR}.
+
+\emph{The last cell.} Let $y$ be a chain in the last cell, as in Section \ref{sec:outer}. By (A6), $E(y) > \tfrac{35}{2}$, or a relabelling of $y$ lies in the core. In the second case Theorem \ref{thm:core} gives a further relabelling in a selected-edge claim or in a leaf of the list, where the energy exceeds $\tfrac{35}{2}$, or in the inner piece. Since the energy does not depend on the labelling, $E(y) \geq \tfrac{35}{2}$, and if $E(y) \leq \tfrac{35}{2}$, then a relabelling of $y$ lies in the inner piece and has the contacts. This is the theorem \lean{l3k2\_energy}.
+
+\subsection{The lower bound}\label{sec:lower}
+
+Let $x$ be a configuration of nine distinct points of $\Sph^3$. We show that $E(x) \geq \tfrac{35}{2}$, and that a relabelling of $x$ has the contacts if $E(x) \leq \tfrac{35}{2}$. Suppose that $E(x) \leq \tfrac{35}{2}$. Then $x$ is separated by Theorem \ref{thm:separation}. Let $y$ be a labelling of $x$ that is a chain (Section \ref{sec:chains}); it is separated, and $E(y) = E(x)$. By Theorem \ref{thm:cells54} there are three cases. If $y$ lies in a pair claim of the list \lean{claims54}, then $E(y) > \tfrac{35}{2}$ by \lean{Excl claims54}, a contradiction. If $m_0 \geq a_0$, then all inner products of distinct points of $y$ are at least $a_0$, and $E(y) > \tfrac{35}{2}$ by \lean{ExclL0}, a contradiction. Hence $y$ lies in the last cell, and the theorem of the last cell gives $E(y) \geq \tfrac{35}{2}$ and a relabelling with the contacts. This is the theorem \lean{lower\_and\_contacts} (\file{LeanCode/S3N9/Minimum.lean}).
+
+\subsection{The case of equality}\label{sec:equality}
+
+Let $x$ be a configuration of distinct points of $\Sph^3$ with $E(x) = \tfrac{35}{2}$. By Section \ref{sec:lower} a labelling $y$ of $x$ has the contacts: the two points of each of the pairs $A$ and $B$ are antipodal, the points of $A$ and $B$ are orthogonal to each other and to the five ring points, and the inner product $t$ of two ring points satisfies $4 t^2 + 2 t - 1 = 0$. From here the argument is linear algebra (A10). A point of $A$, a point of $B$ and one ring point form an orthonormal family, which we extend to an orthonormal basis $b_0, b_1, b_2, b_3$ of $\R^4$ with the ring point as $b_0$ and the points of $A$ and $B$ as $b_2$ and $b_3$. Every ring point is orthogonal to $b_2$ and $b_3$, so it lies in the plane of $b_0$ and $b_1$. Its first coordinate is $1$ or a root of $4 t^2 + 2 t - 1$, that is, $c_+$ or $c_-$, and its second coordinate has the square $1 - t^2$. Hence it is a vertex of the regular pentagon in this plane with the vertex $b_0$. Distinct ring points are distinct vertices, so the ring is this pentagon. The matrix $U$ of the basis $b$ in the standard basis is orthogonal, and it maps the points of $C^*$ to the points of $y$, in some order. This is the theorem \lean{congruent\_of\_contacts} (\file{LeanCode/S3N9/Equality.lean}).
+
+\subsection{The end of the proof}
+
+The first statement of Theorem \ref{thm:harmonic9} is (A1). The inequality is the lower bound of Section \ref{sec:lower}. If $E(x) = \tfrac{35}{2}$, then $x$ arises from $C^*$ by an orthogonal map and a relabelling by Section \ref{sec:equality}. This is the theorem \lean{S3N9.harmonic9\_of}, which has the six propositions of Section \ref{sec:fit} as hypotheses, and with the theorems of the certificates it is \lean{T8A.harmonic9} (A11). Conversely, a configuration that arises from $C^*$ by an orthogonal map and a relabelling has the energy $E(C^*) = \tfrac{35}{2}$, since an orthogonal map preserves distances and since the energy does not depend on the labelling (A2). The file \file{Showcase_WithProofs.lean} adds this converse.
+
+\section{The proof in Lean}\label{sec:lean}
+
+The proof of Theorem \ref{thm:harmonic9} in Lean has three parts.
+
+\emph{The library.} The folder \file{LeanCode/} contains $79$ files with $24\,606$ lines. The files of \file{LeanCode/CAP/} contain, for every kind of certificate, a checker and its theorem of soundness: the typed three-point bound (\file{CAP/Wsos/}, Theorems \ref{thm:typed}, \ref{thm:cert} and \ref{thm:claim}), the sign of a polynomial on an interval (\file{CAP/UniPos/}), the virtual-root bound (\file{CAP/VR/}, Theorems \ref{thm:vr}, \ref{thm:vrexact} and \ref{thm:contacts}) and the linear programming bound (\file{CAP/Schema/LP/}, Theorem \ref{thm:lpmarked}). A checker is a function with values in \lean{Bool} that computes with natural numbers. The files of \file{LeanCode/S3N9/} contain the statement of the theorem, the certificates of (C1) and (C5), and the analytic statements (A1) to (A11); the $17$ files of the analytic part have $4\,594$ lines.
+
+\emph{The certificates.} The folder \file{Certificates/} contains $406$ modules with $454$ MB of Lean source. Its $402$ data modules contain the data of the certificates as natural numbers, and the theorems that the kernel accepts the checkers on these data. A theorem of this kind has the form \lean{check data = true} and the proof \lean{by decide +kernel}: the kernel of Lean evaluates the checker. There are $5\,426$ such theorems. The statement modules \file{Typed/T8S.lean}, \file{VirtualRoot/T8VS.lean} and \file{Sharp/I3S.lean} apply the theorems of soundness to them and contain the theorems of the statements (C2) to (C4) and (C6) to (C8).
+
+\emph{The assembly.} The module \file{Certificates/Theorem/T8A.lean} proves the six propositions of Section \ref{sec:fit} from the theorems of the certificates, by $135$ further evaluations of the kernel, and applies \lean{S3N9.harmonic9\_of}. It ends with the theorem \lean{T8A.harmonic9}, a proof of the proposition \lean{S3N9.Harmonic9}, and it tests that this theorem depends on the axioms \lean{propext}, \lean{Classical.choice} and \lean{Quot.sound} only. No step uses \lean{native\_decide} or \lean{sorry}. Finally \file{Showcase_WithProofs.lean} passes to points of the Euclidean space and to linear isometries, and it adds the converse of the case of equality.
+
+The theorem does not depend on how the certificates were found: Lean proves it from the data that the modules contain.
+
+\end{document}

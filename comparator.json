@@ -1,0 +1,22 @@
+{
+  "challenge_module": "Showcase",
+  "solution_module": "Showcase_WithProofs",
+  "theorem_names": [
+    "Harmonic9S3.harmonic_energy_9_points_S3"
+  ],
+  "definition_names": [
+    "Harmonic9S3.Point",
+    "Harmonic9S3.IsConfiguration",
+    "Harmonic9S3.E",
+    "Harmonic9S3.Congruent",
+    "Harmonic9S3.IsUniqueMinimizer",
+    "Harmonic9S3.circlePoint",
+    "Harmonic9S3.X"
+  ],
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ],
+  "enable_nanoda": true
+}
