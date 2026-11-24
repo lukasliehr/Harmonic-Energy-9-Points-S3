@@ -50,8 +50,7 @@ theorem harmonic_energy_9_points_S3 :
 
 **Dependencies:** The proof of `harmonic_energy_9_points_S3` in
 [Showcase_WithProofs.lean](Showcase_WithProofs.lean) compiles and depends only on `propext`,
-`Classical.choice` and `Quot.sound`, Lean's three standard axioms. It uses neither
-`native_decide` nor `sorry`.
+`Classical.choice` and `Quot.sound`.
 
 </td></tr></table>
 
