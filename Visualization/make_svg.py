@@ -235,9 +235,19 @@ def gradient(name, color, haze=0.0):
 TX = 462                                 # the left edge of the text
 
 
-def legend(y, c, text):
-    return (f'<circle cx="{TX + 6}" cy="{y - 5}" r="5.5" fill="url(#{GRAD[c]})"/>'
-            f'<text x="{TX + 23}" y="{y}">{text}</text>')
+def shape(y, c, corners, turn, first, second):
+    """A row of the legend: the points of one circle as they lie in the plane of that circle, where they
+    form a regular polygon, and two lines of text. The stereographic projection does not show this."""
+    cx, r = TX + 28, 25
+    at = [(cx + r * math.sin(turn + 2 * math.pi * k / corners), y - r * math.cos(turn + 2 * math.pi * k / corners))
+          for k in range(corners)]
+    polygon = " ".join(f"{num(px)},{num(py)}" for px, py in at)
+    return (f'<circle cx="{cx}" cy="{y}" r="{r}" fill="none" stroke="{COLOR[c]}" stroke-width="1.6" stroke-opacity=".45"/>'
+            f'<polygon points="{polygon}" fill="{COLOR[c]}" fill-opacity=".07" stroke="{COLOR[c]}" stroke-width="1.2" '
+            'stroke-opacity=".7" stroke-linejoin="round"/>'
+            + "".join(f'<circle cx="{num(px)}" cy="{num(py)}" r="4.6" fill="url(#{GRAD[c]})"/>' for px, py in at)
+            + f'<text x="{TX + 70}" y="{y - 3}" font-size="14" fill="{INK2}">{first}</text>'
+            f'<text x="{TX + 70}" y="{y + 15}" font-size="12.5" fill="{MUTED}">{second}</text>')
 
 
 def check_loop():
@@ -266,8 +276,9 @@ def svg():
         '<title id="t">The minimizer for 9 points on the three-sphere: a pentagon with an orthogonal square</title>',
         '<desc id="d">Nine points on the unit sphere of four-dimensional space, in a stereographic projection: '
         'a regular pentagon on a great circle and a square on the orthogonal great circle. The two great circles '
-        f'appear as two linked circles, which rotate about their common axis. The harmonic energy {ENERGY} of '
-        'this configuration is the minimum for 9 points.</desc>',
+        'appear as two linked circles, which rotate about their common axis. The projection changes the spacing of '
+        'the points, so the pentagon and the square are also drawn flat, each in the plane of its circle, where the '
+        f'points are evenly spaced. The harmonic energy {ENERGY} of this configuration is the minimum for 9 points.</desc>',
         "<defs>",
         gradient("b", BLUE), gradient("g", GREEN), gradient("bf", BLUE, 0.5), gradient("gf", GREEN, 0.5),
         '<radialGradient id="shadow"><stop offset="0" stop-color="#141a2a" stop-opacity=".17"/>'
@@ -280,19 +291,20 @@ def svg():
         '<g fill="none" stroke-width="3.2" stroke-linecap="round">',
         *body(), "</g>",
         # the text, in the manner of the page lukasliehr.github.io/energy-minimization
-        f'<text x="{TX}" y="82" font-size="13" fill="{MUTED}">Harmonic energy of 9 points on S³</text>',
+        f'<text x="{TX}" y="62" font-size="13" fill="{MUTED}">Harmonic energy of 9 points on S³</text>',
         f'<text font-size="23" font-weight="600" fill="{INK}" letter-spacing="-.35">'
-        f'<tspan x="{TX}" y="114">Regular pentagon</tspan>'
-        f'<tspan x="{TX}" y="142">with orthogonal square</tspan></text>',
-        f'<g font-size="14" fill="{INK2}">',
-        legend(186, 0, "Five points: a pentagon on a great circle"),
-        legend(214, 1, "Four points: a square on the orthogonal circle"),
-        "</g>",
-        f'<text font-size="12.5" fill="{MUTED}"><tspan x="{TX}" y="246">Stereographic projection of S³, in which the two</tspan>'
-        f'<tspan x="{TX}" y="264">great circles appear as linked circles</tspan></text>',
-        f'<line x1="{TX}" y1="290" x2="{W - 44}" y2="290" stroke="{INK}" stroke-opacity=".1"/>',
-        f'<text x="{TX}" y="320" font-size="12" fill="{MUTED}">Minimal harmonic energy</text>',
-        f'<text x="{TX}" y="354" font-size="27" font-weight="600" fill="{INK}" letter-spacing="-.5">{ENERGY}</text>',
+        f'<tspan x="{TX}" y="93">Regular pentagon</tspan>'
+        f'<tspan x="{TX}" y="121">with orthogonal square</tspan></text>',
+        # the two circles as they are: each one flat, in its own plane
+        shape(172, 0, 5, 0.0, "Five points: a regular pentagon", "on a great circle"),
+        shape(238, 1, 4, math.pi / 4, "Four points: a square", "on the orthogonal great circle"),
+        f'<text font-size="12.5" fill="{MUTED}">'
+        f'<tspan x="{TX}" y="290">Left: both circles in a stereographic projection of S³.</tspan>'
+        f'<tspan x="{TX}" y="308">It shows that they are linked, but it changes the spacing</tspan>'
+        f'<tspan x="{TX}" y="326">of the points, which is even on each circle.</tspan></text>',
+        f'<line x1="{TX}" y1="346" x2="{W - 44}" y2="346" stroke="{INK}" stroke-opacity=".1"/>',
+        f'<text x="{TX}" y="371" font-size="12" fill="{MUTED}">Minimal harmonic energy</text>',
+        f'<text x="{TX}" y="404" font-size="27" font-weight="600" fill="{INK}" letter-spacing="-.5">{ENERGY}</text>',
         "</svg>",
     ]
     return "\n".join(parts) + "\n"
