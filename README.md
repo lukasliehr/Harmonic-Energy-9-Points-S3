@@ -1,6 +1,6 @@
 # The minimal harmonic energy of 9 points on S³
 
-This repository contains a Lean 4 formalization of the minimization of the harmonic energy of
+This repository contains a Lean 4 formalization of the solution to the minimization problem of the harmonic energy of
 $N=9$ points on the sphere $S^3$. The main theorem says that a regular pentagon on a great circle
 together with a square on the orthogonal great circle is the unique minimizer of the harmonic
 energy, and that the minimal energy is $\frac{35}{2}$.
@@ -9,7 +9,7 @@ energy, and that the minimal energy is $\frac{35}{2}$.
 
 ## Preliminaries
 
-The *harmonic energy* of a configuration $Y=(y_1,\ldots,y_9)$ of distinct points on the unit
+The *harmonic energy* of a configuration $Y=(y_1,\ldots,y_9)$ of nine distinct points on the unit
 sphere $S^3\subset\mathbb{R}^4$ is
 
 ```math
@@ -19,7 +19,7 @@ E(Y)=\sum_{1\le i\lt j\le 9}\frac{1}{\lVert y_i-y_j\rVert^{2}}.
 It is the electrostatic energy of unit charges at the points of $Y$: the potential of a point
 charge in $\mathbb{R}^4$ is proportional to $1/r^2$.
 
-Let $X=(x_1,\ldots,x_9)$ be the configuration that consists of the five points
+In what follows, let $X=(x_1,\ldots,x_9)$ be the configuration that consists of the five points
 
 ```math
 \Bigl(\cos\tfrac{2\pi k}{5},\ \sin\tfrac{2\pi k}{5},\ 0,\ 0\Bigr),\qquad k=0,\ldots,4,
@@ -30,8 +30,7 @@ and a square on the great circle of the orthogonal plane.
 
 ## Formalized theorem
 
-**Theorem.** The configuration $X$ consists of 9 distinct points on $S^3$, and the following
-holds:
+**Theorem.** The configuration $X$ from above has the following properties:
 
 1. Every configuration $Y$ of 9 distinct points on $S^3$ satisfies $E(Y)\ge E(X)$, with equality
    if and only if $Y$ arises from $X$ by an orthogonal transformation and a relabelling of the
